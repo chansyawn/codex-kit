@@ -54,6 +54,8 @@ async function startServer(options: ServerOptions = {}): Promise<void> {
       console.log(`CodexKit runtime listening on ${createDashboardUrlFromAddress(address)}`);
     },
   );
+
+  await waitForShutdown();
 }
 
 async function ensureServer(options: ServerOptions = {}): Promise<void> {
@@ -76,7 +78,37 @@ async function handleSessionStart(options: ServerOptions = {}): Promise<void> {
   await ensureServer(options);
 }
 
+async function startDevServer(options: ServerOptions = {}): Promise<void> {
+  const { createRuntimeDevServer } = await import("./dev-server.ts");
+  const normalizedOptions = normalizeServerOptions(options);
+  const devServer = await createRuntimeDevServer({
+    codexHome: getCodexHome(),
+    host: normalizedOptions.host,
+    port: normalizedOptions.port,
+    version: VERSION,
+  });
+
+  console.log(`CodexKit dev server listening on ${devServer.url}`);
+
+  const close = () => {
+    void devServer.close().finally(() => {
+      process.exit(0);
+    });
+  };
+
+  process.once("SIGINT", close);
+  process.once("SIGTERM", close);
+
+  await waitForShutdown();
+}
+
 const cli = cac("codexkit");
+
+cli
+  .command("dev", "Start the local CodexKit runtime and Vite dashboard dev server")
+  .option("--host <host>", "Host to bind", { default: DEFAULT_HOST })
+  .option("--port <port>", "Port to bind. Omit it to let the system assign one.")
+  .action(startDevServer);
 
 cli
   .command("server <action>", "Manage the local CodexKit runtime server")
@@ -128,4 +160,16 @@ cli.parse();
 
 function createDashboardUrlFromAddress(address: AddressInfo): string {
   return createDashboardUrl(address.address, address.port);
+}
+
+function waitForShutdown(): Promise<never> {
+  const keepAlive = setInterval(() => {}, 60_000);
+
+  process.once("exit", () => {
+    clearInterval(keepAlive);
+  });
+
+  return new Promise<never>(() => {
+    // Intentionally keep the CLI process alive until a signal handler exits it.
+  });
 }

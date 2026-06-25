@@ -1,11 +1,14 @@
 import { fileURLToPath } from "node:url";
 
-import { lingui } from "@lingui/vite-plugin";
+import { lingui, linguiTransformerBabelPreset } from "@lingui/vite-plugin";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
+
+const appRoot = fileURLToPath(new URL(".", import.meta.url));
+const linguiConfigPath = fileURLToPath(new URL("./lingui.config.ts", import.meta.url));
 
 export default defineConfig({
   server: {
@@ -25,11 +28,20 @@ export default defineConfig({
       target: "react",
     }),
     babel({
-      plugins: ["@lingui/babel-plugin-lingui-macro"],
+      cwd: appRoot,
+      presets: [
+        linguiTransformerBabelPreset(undefined, {
+          configPath: linguiConfigPath,
+          cwd: appRoot,
+        }),
+      ],
     }),
     react(),
     tailwindcss(),
-    lingui(),
+    lingui({
+      configPath: linguiConfigPath,
+      cwd: appRoot,
+    }),
   ],
   test: {
     environment: "jsdom",
