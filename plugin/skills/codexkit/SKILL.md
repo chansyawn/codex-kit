@@ -13,4 +13,4 @@ Run:
 npx -y @codexkit/runtime open
 ```
 
-The runtime serves the dashboard at `http://127.0.0.1:43188` and exposes session/config examples through `/api/*`.
+The runtime uses a system-assigned local port and prints the dashboard URL when it starts.

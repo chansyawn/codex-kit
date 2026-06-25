@@ -9,9 +9,11 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   server: {
-    proxy: {
-      "/api": "http://127.0.0.1:43188",
-    },
+    proxy: process.env.CODEXKIT_RUNTIME_URL
+      ? {
+          "/api": process.env.CODEXKIT_RUNTIME_URL,
+        }
+      : undefined,
   },
   resolve: {
     alias: {

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
+import type { AddressInfo } from "node:net";
+
 import { serve } from "@hono/node-server";
 import { cac } from "cac";
 
 import { createRuntimeApp } from "./server.ts";
 
 const DEFAULT_HOST = "127.0.0.1";
-const DEFAULT_PORT = 43188;
+const SYSTEM_ASSIGNED_PORT = 0;
 const VERSION = "0.0.0";
 
 type ServerOptions = {
@@ -23,14 +25,16 @@ function getCodexHome(): string {
 function normalizeServerOptions(options: ServerOptions) {
   return {
     host: options.host ?? DEFAULT_HOST,
-    port: Number(options.port ?? DEFAULT_PORT),
+    port: Number(options.port ?? SYSTEM_ASSIGNED_PORT),
   };
 }
 
-function createDashboardUrl(options: ServerOptions = {}): string {
-  const normalizedOptions = normalizeServerOptions(options);
+function createDashboardUrl(host: string, port: number): string {
+  return `http://${host}:${port}`;
+}
 
-  return `http://${normalizedOptions.host}:${normalizedOptions.port}`;
+function createRuntimePortMessage(): string {
+  return "CodexKit runtime uses a system-assigned port. Run `codexkit server start` to print the dashboard URL.";
 }
 
 async function startServer(options: ServerOptions = {}): Promise<void> {
@@ -40,22 +44,36 @@ async function startServer(options: ServerOptions = {}): Promise<void> {
     version: VERSION,
   });
 
-  serve({
-    fetch: app.fetch,
-    hostname: normalizedOptions.host,
-    port: normalizedOptions.port,
-  });
-
-  console.log(`CodexKit runtime listening on ${createDashboardUrl(normalizedOptions)}`);
+  serve(
+    {
+      fetch: app.fetch,
+      hostname: normalizedOptions.host,
+      port: normalizedOptions.port,
+    },
+    (address) => {
+      console.log(`CodexKit runtime listening on ${createDashboardUrlFromAddress(address)}`);
+    },
+  );
 }
 
 async function ensureServer(options: ServerOptions = {}): Promise<void> {
-  console.log(`CodexKit runtime should be available at ${createDashboardUrl(options)}`);
+  const normalizedOptions = normalizeServerOptions(options);
+
+  if (normalizedOptions.port === SYSTEM_ASSIGNED_PORT) {
+    console.log(createRuntimePortMessage());
+    return;
+  }
+
+  console.log(
+    `CodexKit runtime should be available at ${createDashboardUrl(
+      normalizedOptions.host,
+      normalizedOptions.port,
+    )}`,
+  );
 }
 
 async function handleSessionStart(options: ServerOptions = {}): Promise<void> {
   await ensureServer(options);
-  console.log(`Open CodexKit dashboard: ${createDashboardUrl(options)}`);
 }
 
 const cli = cac("codexkit");
@@ -63,7 +81,7 @@ const cli = cac("codexkit");
 cli
   .command("server <action>", "Manage the local CodexKit runtime server")
   .option("--host <host>", "Host to bind", { default: DEFAULT_HOST })
-  .option("--port <port>", "Port to bind", { default: DEFAULT_PORT })
+  .option("--port <port>", "Port to bind. Omit it to let the system assign one.")
   .action(async (action: ServerAction, options: ServerOptions) => {
     if (action === "start") {
       await startServer(options);
@@ -75,29 +93,29 @@ cli
       return;
     }
 
-    throw new Error(`Unknown server action: ${action}`);
+    throw new Error("Unknown server action.");
   });
 
 cli
   .command("hook <name>", "Handle Codex plugin hooks")
   .option("--host <host>", "Runtime host", { default: DEFAULT_HOST })
-  .option("--port <port>", "Runtime port", { default: DEFAULT_PORT })
+  .option("--port <port>", "Runtime port. Omit it to let the system assign one.")
   .action(async (name: HookAction, options: ServerOptions) => {
     if (name === "session-start") {
       await handleSessionStart(options);
       return;
     }
 
-    throw new Error(`Unknown hook: ${name}`);
+    throw new Error("Unknown hook.");
   });
 
 cli.command("open", "Print the dashboard URL").action(() => {
-  console.log(createDashboardUrl());
+  console.log(createRuntimePortMessage());
 });
 
 cli.command("doctor", "Print CodexKit environment diagnostics").action(() => {
   console.log(`Codex home: ${getCodexHome()}`);
-  console.log(`Dashboard URL: ${createDashboardUrl()}`);
+  console.log(createRuntimePortMessage());
 });
 
 cli.command("stop", "Stop the local CodexKit runtime server").action(() => {
@@ -107,3 +125,7 @@ cli.command("stop", "Stop the local CodexKit runtime server").action(() => {
 cli.help();
 cli.version(VERSION);
 cli.parse();
+
+function createDashboardUrlFromAddress(address: AddressInfo): string {
+  return createDashboardUrl(address.address, address.port);
+}
