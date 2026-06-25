@@ -1,0 +1,8 @@
+{
+  "id": "codexkit",
+  "name": "CodexKit",
+  "version": "0.0.0",
+  "description": "Non-invasive Codex extension shell that delegates runtime work to npx @codexkit/runtime.",
+  "hooks": "../hooks/hooks.json",
+  "skills": "../skills"
+}
