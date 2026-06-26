@@ -36,7 +36,6 @@ describe("codexkit vite dev server", () => {
     const healthResponse = await fetch(`${url}api/health`);
     const pageResponse = await fetch(url);
     const appModuleResponse = await fetch(`${url}src/app/app.tsx`);
-    const localeModuleResponse = await fetch(`${url}src/locales/en/messages.po?import`);
     const appModule = await appModuleResponse.text();
 
     await expect(healthResponse.json()).resolves.toMatchObject({
@@ -50,8 +49,6 @@ describe("codexkit vite dev server", () => {
     expect(pageHtml).toContain("window.$RefreshReg$");
     expect(appModule).toContain("@tanstack_react-router");
     expect(appModule).not.toContain("/@fs/");
-    expect(localeModuleResponse.ok).toBe(true);
-    expect(localeModuleResponse.headers.get("content-type")).toContain("text/javascript");
   });
 });
 

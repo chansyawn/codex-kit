@@ -1,19 +1,17 @@
 import { useEffect, type ReactNode } from "react";
 
-import { useI18nState } from "@/app/i18n";
 import { DirectionProvider } from "@/ui/components/direction";
 
 type DirectionStateProviderProps = {
   children: ReactNode;
 };
 
+const DOCUMENT_DIRECTION = "ltr";
+
 export function DirectionStateProvider({ children }: DirectionStateProviderProps) {
-  const { activeLocale } = useI18nState();
-  const direction = activeLocale.rtl ? "rtl" : "ltr";
-
   useEffect(() => {
-    document.documentElement.dir = direction;
-  }, [direction]);
+    document.documentElement.dir = DOCUMENT_DIRECTION;
+  }, []);
 
-  return <DirectionProvider direction={direction}>{children}</DirectionProvider>;
+  return <DirectionProvider direction={DOCUMENT_DIRECTION}>{children}</DirectionProvider>;
 }
