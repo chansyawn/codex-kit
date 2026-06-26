@@ -1,0 +1,72 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: codex-kit\n"
+"Language: zh-Hans\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:31
+msgid "home.actions.docs"
+msgstr "Vite+ 文档"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:66
+msgid "home.actions.i18n"
+msgstr "Lingui 指南"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:57
+msgid "home.actions.router"
+msgstr "查看路由"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:45
+msgid "home.description"
+msgstr "CodexKit 应用现在以 React、TanStack Router、Lingui、Tailwind 和共享 UI primitives 起步，不再是 demo counter。"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:39
+msgid "home.eyebrow"
+msgstr "网站壳层已初始化"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:83
+msgid "home.features.design.description"
+msgstr "Tailwind tokens、Base UI 组件和 lucide 图标已经可以用于产品界面。"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:81
+msgid "home.features.design.title"
+msgstr "设计 primitives"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:91
+msgid "home.features.locale.description"
+msgstr "主题、语言和文字方向偏好都由应用 provider 管理。"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:89
+msgid "home.features.locale.title"
+msgstr "感知语言环境"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:75
+msgid "home.features.routing.description"
+msgstr "文件路由已通过 TanStack Router 和生成的路由元数据接入。"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:73
+msgid "home.features.routing.title"
+msgstr "类型化路由"
+
+#. js-lingui-explicit-id
+#: src/routes/index.tsx:42
+msgid "home.title"
+msgstr "基于真实应用基础架构构建 codex-kit。"

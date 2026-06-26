@@ -5,7 +5,7 @@ export default defineConfig({
     "*": "vp check --fix",
   },
   fmt: {
-    ignorePatterns: ["apps/website/src/routeTree.gen.ts"],
+    ignorePatterns: ["apps/codexkit/src/routeTree.gen.ts"],
     sortImports: true,
     sortTailwindcss: true,
   },

@@ -6,9 +6,9 @@
   "scripts": {
     "postinstall": "vp config",
     "ready": "vp check && vp run -r test && vp run -r build",
-    "dev": "vp run @codexkit/runtime#build && node packages/runtime/dist/cli.mjs dev",
-    "dev:api": "vp run @codexkit/runtime#build && node packages/runtime/dist/cli.mjs server start",
-    "dev:web": "vp run website#dev"
+    "dev": "vp run codexkit-app#build && vp run @codexkit/runtime#build && node packages/cli/dist/cli.mjs dev",
+    "dev:api": "vp run codexkit-app#build && vp run @codexkit/runtime#build && node packages/cli/dist/cli.mjs server start",
+    "dev:web": "vp run codexkit-app#dev"
   },
   "devDependencies": {
     "vite-plus": "catalog:"
