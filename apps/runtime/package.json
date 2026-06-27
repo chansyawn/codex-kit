@@ -5,15 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "tsc && vp build --mode client && vp build --mode server",
-    "check": "vp check",
-    "test": "vp test",
+    "build": "vp build --mode client && vp build --mode server",
+    "check": "vp run paraglide:compile && vp check",
+    "test": "vp run paraglide:compile && vp test --passWithNoTests",
+    "paraglide:compile": "node --experimental-strip-types ./scripts/compile-paraglide.ts",
     "preview": "vp preview"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@hono/node-server": "catalog:",
+    "@inlang/paraglide-js": "^2.20.2",
     "@tailwindcss/vite": "^4.3.1",
     "@tanstack/react-query": "^5.101.1",
     "@tanstack/react-router": "^1.170.15",

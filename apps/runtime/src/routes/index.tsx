@@ -4,6 +4,7 @@ import {
   BoxesIcon,
   CheckCircle2Icon,
   FileCogIcon,
+  LanguagesIcon,
   RefreshCwIcon,
   ServerIcon,
   TerminalSquareIcon,
@@ -11,6 +12,8 @@ import {
 import type { ReactNode } from "react";
 
 import { readConfigOverview, readHealth, readSessions } from "@/app/codexkit-api";
+import { m } from "@/paraglide/messages";
+import { getLocale, setLocale, type Locale } from "@/paraglide/runtime";
 import { Button } from "@/ui/components/button";
 import { cn } from "@/ui/lib/utils";
 
@@ -33,6 +36,7 @@ function IndexPage() {
   });
 
   const isRefreshing = healthQuery.isFetching || sessionsQuery.isFetching || configQuery.isFetching;
+  const locale = getLocale();
 
   return (
     <main className="bg-background text-foreground min-h-svh">
@@ -44,20 +48,34 @@ function IndexPage() {
             </span>
             <span>CodexKit</span>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => {
-              void healthQuery.refetch();
-              void sessionsQuery.refetch();
-              void configQuery.refetch();
-            }}
-          >
-            <RefreshCwIcon
-              data-icon="inline-start"
-              className={cn(isRefreshing && "animate-spin")}
-            />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div
+              aria-label={m.language_label()}
+              className="border-border inline-flex h-8 items-center rounded-lg border"
+            >
+              <LanguagesIcon className="text-muted-foreground ms-2 size-4" aria-hidden="true" />
+              <LanguageButton currentLocale={locale} locale="en">
+                {m.language_english()}
+              </LanguageButton>
+              <LanguageButton currentLocale={locale} locale="zh-CN">
+                {m.language_chinese()}
+              </LanguageButton>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void healthQuery.refetch();
+                void sessionsQuery.refetch();
+                void configQuery.refetch();
+              }}
+            >
+              <RefreshCwIcon
+                data-icon="inline-start"
+                className={cn(isRefreshing && "animate-spin")}
+              />
+              {m.refresh()}
+            </Button>
+          </div>
         </header>
 
         <div className="grid gap-5 py-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -65,29 +83,28 @@ function IndexPage() {
             <section className="grid gap-5 md:grid-cols-3">
               <StatusPanel
                 icon={<ServerIcon aria-hidden="true" />}
-                label="Runtime"
-                value={healthQuery.data?.ok ? "Online" : "Waiting"}
-                detail={healthQuery.data ? `v${healthQuery.data.version}` : "Start codexkit server"}
+                label={m.runtime_label()}
+                value={healthQuery.data?.ok ? m.runtime_online() : m.runtime_waiting()}
+                detail={
+                  healthQuery.data ? `v${healthQuery.data.version}` : m.runtime_start_server()
+                }
               />
               <StatusPanel
                 icon={<TerminalSquareIcon aria-hidden="true" />}
-                label="Sessions"
+                label={m.sessions_label()}
                 value={`${sessionsQuery.data?.length ?? 0}`}
-                detail="Loaded from /api/sessions"
+                detail={m.sessions_loaded_detail()}
               />
               <StatusPanel
                 icon={<FileCogIcon aria-hidden="true" />}
-                label="Config"
+                label={m.config_label()}
                 value={`${configQuery.data?.projects.length ?? 0}`}
-                detail="Project entries detected"
+                detail={m.config_projects_detected()}
               />
             </section>
 
             <section className="grid gap-3">
-              <SectionHeading
-                title="Session Viewer"
-                detail="Codex session metadata surfaced by the runtime."
-              />
+              <SectionHeading title={m.session_viewer_title()} detail={m.session_viewer_detail()} />
               <div className="grid gap-3">
                 {(sessionsQuery.data ?? []).map((session) => (
                   <article key={session.id} className="bg-card rounded-lg border p-4">
@@ -101,55 +118,82 @@ function IndexPage() {
                       </span>
                     </div>
                     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                      <Metadata label="Session ID" value={session.id} />
-                      <Metadata label="Branch" value={session.branch ?? "none"} />
-                      <Metadata label="Last activity" value={session.lastActivityAt} />
+                      <Metadata label={m.session_id_label()} value={session.id} />
+                      <Metadata
+                        label={m.branch_label()}
+                        value={session.branch ?? m.branch_none()}
+                      />
+                      <Metadata label={m.last_activity_label()} value={session.lastActivityAt} />
                     </dl>
                   </article>
                 ))}
-                {sessionsQuery.isError ? <ErrorState message="Unable to load sessions." /> : null}
+                {sessionsQuery.isError ? <ErrorState message={m.sessions_load_error()} /> : null}
               </div>
             </section>
 
             <section className="grid gap-3">
               <SectionHeading
-                title="Config Manager"
+                title={m.config_manager_title()}
                 detail={configQuery.data?.sourcePath ?? "~/.codex/config.toml"}
               />
               <div className="grid gap-3 lg:grid-cols-2">
                 <ConfigGroup
-                  title="Global"
+                  title={m.global_config_title()}
                   entries={configQuery.data?.global.map((entry) => ({
                     label: entry.key,
                     value: entry.valuePreview,
                   }))}
                 />
                 <ConfigGroup
-                  title="Projects"
+                  title={m.projects_config_title()}
                   entries={configQuery.data?.projects.map((project) => ({
                     label: project.path,
-                    value: project.trustedLevel ?? "configured",
+                    value: project.trustedLevel ?? m.configured_value(),
                   }))}
                 />
               </div>
-              {configQuery.isError ? (
-                <ErrorState message="Unable to load config overview." />
-              ) : null}
+              {configQuery.isError ? <ErrorState message={m.config_overview_load_error()} /> : null}
             </section>
           </div>
 
           <aside className="grid content-start gap-3">
-            <SectionHeading title="Call Flow" detail="Thin plugin, local runtime, browser UI." />
-            <CallFlowStep label="Plugin hook" value="SessionStart" />
-            <CallFlowStep label="CLI command" value="codexkit open" />
-            <CallFlowStep label="CLI wrapper" value="@codexkit/cli" />
-            <CallFlowStep label="App runtime" value="@codexkit/runtime" />
-            <CallFlowStep label="App path" value="apps/runtime" />
-            <CallFlowStep label="Runtime route" value="Hono /api/*" />
+            <SectionHeading title={m.call_flow_title()} detail={m.call_flow_detail()} />
+            <CallFlowStep label={m.plugin_hook_label()} value="SessionStart" />
+            <CallFlowStep label={m.cli_command_label()} value="codexkit open" />
+            <CallFlowStep label={m.cli_wrapper_label()} value="@codexkit/cli" />
+            <CallFlowStep label={m.app_runtime_label()} value="@codexkit/runtime" />
+            <CallFlowStep label={m.app_path_label()} value="apps/runtime" />
+            <CallFlowStep label={m.runtime_route_label()} value="Hono /api/*" />
           </aside>
         </div>
       </section>
     </main>
+  );
+}
+
+type LanguageButtonProps = {
+  children: ReactNode;
+  currentLocale: Locale;
+  locale: Locale;
+};
+
+function LanguageButton({ children, currentLocale, locale }: LanguageButtonProps) {
+  const isActive = currentLocale === locale;
+
+  return (
+    <button
+      type="button"
+      aria-pressed={isActive}
+      className={cn(
+        "h-full px-2 text-xs font-medium transition-colors",
+        isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+      )}
+      onClick={() => {
+        void setLocale(locale);
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -221,7 +265,7 @@ function ConfigGroup({ entries = [], title }: ConfigGroupProps) {
           </div>
         ))}
         {entries.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Waiting for runtime data.</p>
+          <p className="text-muted-foreground text-sm">{m.waiting_for_runtime_data()}</p>
         ) : null}
       </div>
     </article>

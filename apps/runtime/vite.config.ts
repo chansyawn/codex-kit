@@ -3,10 +3,13 @@ import { fileURLToPath } from "node:url";
 import build from "@hono/vite-build";
 import devServer, { defaultOptions } from "@hono/vite-dev-server";
 import nodeAdapter from "@hono/vite-dev-server/node";
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { type ConfigEnv, defineConfig, lazyPlugins } from "vite-plus";
+
+import { paraglideConfig, runtimeRoot } from "./paraglide.config.ts";
 
 const commonConfig = {
   resolve: {
@@ -14,6 +17,7 @@ const commonConfig = {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  root: runtimeRoot,
   test: {
     environment: "jsdom",
   },
@@ -50,6 +54,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         adapter: nodeAdapter(),
       }),
       tanstackRouter({ target: "react" }),
+      paraglideVitePlugin(paraglideConfig),
       react(),
       tailwindcss(),
     ]),
