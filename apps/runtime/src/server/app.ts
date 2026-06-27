@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
-import { extname, join, normalize, relative, resolve, sep } from "node:path";
+import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 
 import { createRuntimeApi } from "@/server/api";
@@ -37,19 +38,27 @@ export function createRuntimeApp(options: RuntimeAppOptions): Hono<{ Bindings: R
     }),
   );
 
+  if (options.staticRoot) {
+    const serveStaticAsset = serveStatic<{ Bindings: RuntimeBindings }>({
+      root: options.staticRoot,
+    });
+
+    app.use("*", async (context, next) => {
+      const pathname = new URL(context.req.url).pathname;
+
+      if (pathname.startsWith("/api/") || shouldServeHtml(pathname)) {
+        return next();
+      }
+
+      return serveStaticAsset(context, next);
+    });
+  }
+
   app.get("*", async (context) => {
     const pathname = new URL(context.req.url).pathname;
 
     if (pathname.startsWith("/api/")) {
       return context.notFound();
-    }
-
-    if (options.staticRoot) {
-      const staticResponse = await readStaticAsset(options.staticRoot, pathname);
-
-      if (staticResponse) {
-        return staticResponse;
-      }
     }
 
     if (!shouldServeHtml(pathname)) {
@@ -67,62 +76,12 @@ export function createRuntimeApp(options: RuntimeAppOptions): Hono<{ Bindings: R
   return app;
 }
 
-async function readStaticAsset(staticRoot: string, pathname: string): Promise<Response | null> {
-  const filePath = resolveStaticPath(staticRoot, pathname);
-
-  if (!filePath || shouldServeHtml(pathname)) {
-    return null;
-  }
-
-  try {
-    const body = await readFile(filePath);
-
-    return new Response(body, {
-      headers: {
-        "Content-Type": getContentType(filePath),
-      },
-    });
-  } catch {
-    return null;
-  }
-}
-
 async function readIndexHtml(staticRoot?: string): Promise<string> {
   const root = staticRoot ?? appRoot;
 
   return readFile(join(root, "index.html"), "utf8");
 }
 
-function resolveStaticPath(staticRoot: string, pathname: string): string | null {
-  const decodedPath = decodeURIComponent(pathname);
-  const normalizedPath = normalize(decodedPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const filePath = resolve(staticRoot, `.${normalizedPath}`);
-  const relativePath = relative(staticRoot, filePath);
-
-  if (relativePath.startsWith("..") || relativePath.includes(`..${sep}`)) {
-    return null;
-  }
-
-  return filePath;
-}
-
 function shouldServeHtml(pathname: string): boolean {
   return extname(pathname) === "";
-}
-
-function getContentType(filePath: string): string {
-  switch (extname(filePath)) {
-    case ".css":
-      return "text/css; charset=utf-8";
-    case ".html":
-      return "text/html; charset=utf-8";
-    case ".js":
-      return "text/javascript; charset=utf-8";
-    case ".json":
-      return "application/json; charset=utf-8";
-    case ".svg":
-      return "image/svg+xml";
-    default:
-      return "application/octet-stream";
-  }
 }
