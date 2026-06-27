@@ -1,8 +1,10 @@
 {
-  "name": "@codexkit/runtime",
+  "name": "@codexkit/cli",
   "version": "0.0.0",
   "private": true,
-  "bin": "./dist/cli.mjs",
+  "bin": {
+    "codexkit": "./dist/cli.mjs"
+  },
   "files": [
     "dist",
     "runtime"
@@ -10,10 +12,10 @@
   "type": "module",
   "scripts": {
     "build": "vp pack",
+    "cli": "vp run @codexkit/runtime#build && vp pack && node dist/cli.mjs",
     "dev": "vp pack --watch",
-    "cli": "vp run codexkit-app#build && vp pack && node dist/cli.mjs",
-    "test": "vp test",
-    "check": "vp check"
+    "check": "vp check",
+    "test": "vp test"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
@@ -21,8 +23,8 @@
     "vite": "catalog:"
   },
   "devDependencies": {
+    "@codexkit/runtime": "workspace:*",
     "@types/node": "catalog:",
-    "codexkit-app": "workspace:*",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"

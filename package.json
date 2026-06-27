@@ -6,8 +6,8 @@
   "scripts": {
     "postinstall": "vp config",
     "ready": "vp check && vp run -r test && vp run -r build",
-    "dev": "vp dev apps/codexkit",
-    "cli": "vp run @codexkit/runtime#cli"
+    "dev": "vp dev apps/runtime",
+    "cli": "vp run @codexkit/cli#cli"
   },
   "devDependencies": {
     "vite-plus": "catalog:"

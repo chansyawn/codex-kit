@@ -4,11 +4,11 @@ export default defineConfig({
   pack: {
     copy: [
       {
-        from: "../../apps/codexkit/dist/server",
+        from: "../../apps/runtime/dist/server",
         to: "runtime",
       },
       {
-        from: "../../apps/codexkit/dist/client",
+        from: "../../apps/runtime/dist/client",
         to: "runtime",
       },
     ],

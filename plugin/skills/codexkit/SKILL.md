@@ -10,7 +10,7 @@ Use CodexKit when a user wants to inspect Codex session metadata or view the loc
 Run:
 
 ```bash
-npx -y @codexkit/runtime open
+npx -y @codexkit/cli open
 ```
 
 The runtime uses a system-assigned local port and prints the dashboard URL when it starts.

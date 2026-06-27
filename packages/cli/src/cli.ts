@@ -278,7 +278,7 @@ function resolveRuntimePath(...segments: string[]): string {
 }
 
 function resolveWorkspaceAppRoot(): string {
-  const cwdAppRoot = resolve(process.cwd(), "apps/codexkit");
+  const cwdAppRoot = resolve(process.cwd(), "apps/runtime");
 
   return cwdAppRoot;
 }
