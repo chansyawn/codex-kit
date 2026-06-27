@@ -1,7 +1,7 @@
 {
   "SessionStart": [
     {
-      "command": "npx -y @codexkit/cli hook session-start"
+      "command": "npx -y @codexkit/cli open"
     }
   ]
 }

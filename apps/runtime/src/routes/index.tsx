@@ -141,7 +141,7 @@ function IndexPage() {
           <aside className="grid content-start gap-3">
             <SectionHeading title="Call Flow" detail="Thin plugin, local runtime, browser UI." />
             <CallFlowStep label="Plugin hook" value="SessionStart" />
-            <CallFlowStep label="CLI command" value="codexkit hook session-start" />
+            <CallFlowStep label="CLI command" value="codexkit open" />
             <CallFlowStep label="CLI wrapper" value="@codexkit/cli" />
             <CallFlowStep label="App runtime" value="@codexkit/runtime" />
             <CallFlowStep label="App path" value="apps/runtime" />

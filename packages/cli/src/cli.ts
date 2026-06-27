@@ -1,27 +1,17 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import type { AddressInfo } from "node:net";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { serve } from "@hono/node-server";
 import { cac } from "cac";
-import { createServer as createViteServer } from "vite-plus";
 
 const DEFAULT_HOST = "127.0.0.1";
 const SYSTEM_ASSIGNED_PORT = 0;
 const VERSION = "0.0.0";
 const STATE_FILE_NAME = "codexkit-runtime.json";
 const ENSURE_TIMEOUT_MS = 8_000;
-
-type ServerOptions = {
-  host?: string;
-  port?: number | string;
-};
-
-type ServerAction = "ensure" | "start";
-type HookAction = "session-start";
 
 type RuntimeState = {
   host: string;
@@ -48,13 +38,6 @@ function getCodexHome(): string {
   return process.env.CODEX_HOME ?? `${process.env.HOME ?? ""}/.codex`;
 }
 
-function normalizeServerOptions(options: ServerOptions) {
-  return {
-    host: options.host ?? DEFAULT_HOST,
-    port: Number(options.port ?? SYSTEM_ASSIGNED_PORT),
-  };
-}
-
 function getStatePath(codexHome: string): string {
   return join(codexHome, STATE_FILE_NAME);
 }
@@ -63,9 +46,8 @@ function createDashboardUrl(host: string, port: number): string {
   return `http://${host}:${port}`;
 }
 
-async function startServer(options: ServerOptions = {}): Promise<void> {
+async function startServer(): Promise<void> {
   const codexHome = getCodexHome();
-  const normalizedOptions = normalizeServerOptions(options);
   const startedAt = Date.now();
   const staticRoot = resolveRuntimePath("client");
   process.env.CODEXKIT_CODEX_HOME = codexHome;
@@ -88,19 +70,18 @@ async function startServer(options: ServerOptions = {}): Promise<void> {
   const server = serve(
     {
       fetch: app.fetch,
-      hostname: normalizedOptions.host,
-      port: normalizedOptions.port,
+      hostname: DEFAULT_HOST,
+      port: SYSTEM_ASSIGNED_PORT,
     },
     (address) => {
       const state: RuntimeState = {
-        host: normalizedOptions.host,
+        host: DEFAULT_HOST,
         pid: process.pid,
         port: address.port,
         startedAt: new Date(startedAt).toISOString(),
       };
 
       void writeRuntimeState(codexHome, state);
-      console.log(`CodexKit runtime listening on ${createDashboardUrlFromAddress(address)}`);
     },
   );
 
@@ -117,7 +98,7 @@ async function startServer(options: ServerOptions = {}): Promise<void> {
   await waitForShutdown();
 }
 
-async function ensureServer(options: ServerOptions = {}): Promise<RuntimeState> {
+async function ensureServer(): Promise<RuntimeState> {
   const codexHome = getCodexHome();
   const existingState = await readRuntimeState(codexHome);
 
@@ -129,48 +110,15 @@ async function ensureServer(options: ServerOptions = {}): Promise<RuntimeState> 
     await removeRuntimeState(codexHome);
   }
 
-  startBackgroundServer(options);
+  startBackgroundServer();
 
   return waitForRuntimeState(codexHome);
 }
 
-async function handleSessionStart(options: ServerOptions = {}): Promise<void> {
-  const state = await ensureServer(options);
-
-  console.log(`CodexKit runtime available at ${createDashboardUrl(state.host, state.port)}`);
-}
-
-async function openDashboard(options: ServerOptions = {}): Promise<void> {
-  const state = await ensureServer(options);
+async function openDashboard(): Promise<void> {
+  const state = await ensureServer();
 
   console.log(createDashboardUrl(state.host, state.port));
-}
-
-async function startDevServer(options: ServerOptions = {}): Promise<void> {
-  const normalizedOptions = normalizeServerOptions(options);
-  const appRoot = resolveWorkspaceAppRoot();
-  const vite = await createViteServer({
-    configFile: join(appRoot, "vite.config.ts"),
-    root: appRoot,
-    server: {
-      host: normalizedOptions.host,
-      port: normalizedOptions.port,
-    },
-  });
-
-  await vite.listen();
-  vite.printUrls();
-
-  const close = () => {
-    void vite.close().finally(() => {
-      process.exit(0);
-    });
-  };
-
-  process.once("SIGINT", close);
-  process.once("SIGTERM", close);
-
-  await waitForShutdown();
 }
 
 async function stopServer(): Promise<void> {
@@ -190,82 +138,21 @@ async function stopServer(): Promise<void> {
   console.log("CodexKit runtime stopped.");
 }
 
-const cli = cac("codexkit");
-
-cli
-  .command("dev", "Start the local CodexKit Vite dashboard dev server")
-  .option("--host <host>", "Host to bind", { default: DEFAULT_HOST })
-  .option("--port <port>", "Port to bind. Omit it to let the system assign one.")
-  .action(startDevServer);
-
-cli
-  .command("server <action>", "Manage the local CodexKit runtime server")
-  .option("--host <host>", "Host to bind", { default: DEFAULT_HOST })
-  .option("--port <port>", "Port to bind. Omit it to let the system assign one.")
-  .action(async (action: ServerAction, options: ServerOptions) => {
-    if (action === "start") {
-      await startServer(options);
-      return;
-    }
-
-    if (action === "ensure") {
-      const state = await ensureServer(options);
-      console.log(`CodexKit runtime available at ${createDashboardUrl(state.host, state.port)}`);
-      exitSuccessfully();
-      return;
-    }
-
-    throw new Error("Unknown server action.");
-  });
-
-cli
-  .command("hook <name>", "Handle Codex plugin hooks")
-  .option("--host <host>", "Runtime host", { default: DEFAULT_HOST })
-  .option("--port <port>", "Runtime port. Omit it to let the system assign one.")
-  .action(async (name: HookAction, options: ServerOptions) => {
-    if (name === "session-start") {
-      await handleSessionStart(options);
-      exitSuccessfully();
-      return;
-    }
-
-    throw new Error("Unknown hook.");
-  });
-
-cli
-  .command("open", "Print the dashboard URL")
-  .option("--host <host>", "Runtime host", { default: DEFAULT_HOST })
-  .option("--port <port>", "Runtime port. Omit it to let the system assign one.")
-  .action(async (options: ServerOptions) => {
-    await openDashboard(options);
-    exitSuccessfully();
-  });
-
-cli.command("doctor", "Print CodexKit environment diagnostics").action(async () => {
-  const codexHome = getCodexHome();
-  const state = await readRuntimeState(codexHome);
-
-  console.log(`Codex home: ${codexHome}`);
-  console.log(`Runtime state: ${getStatePath(codexHome)}`);
-
-  if (state && (await isRuntimeHealthy(state))) {
-    console.log(`Runtime URL: ${createDashboardUrl(state.host, state.port)}`);
-    exitSuccessfully();
+async function main(): Promise<void> {
+  if (process.argv.includes("--serve")) {
+    await startServer();
     return;
   }
 
-  console.log("Runtime URL: not running");
-  exitSuccessfully();
-});
+  const cli = cac("codexkit");
 
-cli.command("stop", "Stop the local CodexKit runtime server").action(async () => {
-  await stopServer();
-  exitSuccessfully();
-});
+  cli.command("open", "Print the dashboard URL").action(openDashboard);
+  cli.command("stop", "Stop the local CodexKit runtime server").action(stopServer);
 
-cli.help();
-cli.version(VERSION);
-cli.parse();
+  cli.help();
+  cli.version(VERSION);
+  cli.parse();
+}
 
 async function importRuntimeAppModule(): Promise<RuntimeAppModule> {
   const moduleUrl = pathToFileURL(resolveRuntimePath("server/index.js")).href;
@@ -275,12 +162,6 @@ async function importRuntimeAppModule(): Promise<RuntimeAppModule> {
 
 function resolveRuntimePath(...segments: string[]): string {
   return fileURLToPath(new URL(`./runtime/${segments.join("/")}`, import.meta.url));
-}
-
-function resolveWorkspaceAppRoot(): string {
-  const cwdAppRoot = resolve(process.cwd(), "apps/runtime");
-
-  return cwdAppRoot;
 }
 
 async function writeRuntimeState(codexHome: string, state: RuntimeState): Promise<void> {
@@ -300,19 +181,10 @@ async function removeRuntimeState(codexHome: string): Promise<void> {
   await rm(getStatePath(codexHome), { force: true });
 }
 
-function startBackgroundServer(options: ServerOptions): void {
-  const normalizedOptions = normalizeServerOptions(options);
+function startBackgroundServer(): void {
   const child = spawn(
     process.execPath,
-    [
-      process.argv[1] ?? fileURLToPath(import.meta.url),
-      "server",
-      "start",
-      "--host",
-      normalizedOptions.host,
-      "--port",
-      String(normalizedOptions.port),
-    ],
+    [process.argv[1] ?? fileURLToPath(import.meta.url), "--serve"],
     {
       detached: true,
       env: process.env,
@@ -365,10 +237,6 @@ function isPidAlive(pid: number): boolean {
   }
 }
 
-function createDashboardUrlFromAddress(address: AddressInfo): string {
-  return createDashboardUrl(address.address, address.port);
-}
-
 function waitForShutdown(): Promise<never> {
   const keepAlive = setInterval(() => {}, 60_000);
 
@@ -381,6 +249,4 @@ function waitForShutdown(): Promise<never> {
   });
 }
 
-function exitSuccessfully(): never {
-  process.exit(0);
-}
+void main();

@@ -18,8 +18,7 @@
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
-    "cac": "^6.7.14",
-    "vite": "catalog:"
+    "cac": "^6.7.14"
   },
   "devDependencies": {
     "@codexkit/runtime": "workspace:*",
