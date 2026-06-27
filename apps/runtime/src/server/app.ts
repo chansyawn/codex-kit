@@ -4,8 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { Hono } from "hono";
 
-import { createCodexKitCore } from "@/core";
-import type { HealthResponse } from "@/shared/api";
+import { createRuntimeApi } from "@/server/api";
 
 type RuntimeBindings = {
   vite?: {
@@ -24,27 +23,19 @@ export type RuntimeAppOptions = {
 const appRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 export function createRuntimeApp(options: RuntimeAppOptions): Hono<{ Bindings: RuntimeBindings }> {
-  const core = createCodexKitCore({
-    codexHome: options.codexHome,
-    now: options.now,
-  });
   const startedAt = options.startedAt ?? Date.now();
 
   const app = new Hono<{ Bindings: RuntimeBindings }>();
 
-  app.get("/api/health", (context) => {
-    const response: HealthResponse = {
-      ok: true,
-      uptimeMs: Date.now() - startedAt,
+  app.route(
+    "/api",
+    createRuntimeApi({
+      codexHome: options.codexHome,
+      now: options.now,
+      startedAt,
       version: options.version,
-    };
-
-    return context.json(response);
-  });
-
-  app.get("/api/sessions", async (context) => context.json(await core.sessions.list()));
-
-  app.get("/api/config/overview", async (context) => context.json(await core.config.getOverview()));
+    }),
+  );
 
   app.get("*", async (context) => {
     const pathname = new URL(context.req.url).pathname;

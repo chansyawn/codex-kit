@@ -1,7 +1,15 @@
-import type { ConfigOverview, HealthResponse, SessionSummary } from "@/shared/api";
+import { hc, type InferResponseType } from "hono/client";
 
-async function readJson<TData>(path: string): Promise<TData> {
-  const response = await fetch(path);
+import type { RuntimeApi } from "@/server/api";
+
+const client = hc<RuntimeApi>("/api");
+
+type HealthResponse = InferResponseType<typeof client.health.$get>;
+type SessionsResponse = InferResponseType<typeof client.sessions.$get>;
+type ConfigOverviewResponse = InferResponseType<typeof client.config.overview.$get>;
+
+async function readJson<TData>(request: Promise<Response>): Promise<TData> {
+  const response = await request;
 
   if (!response.ok) {
     throw new Error(`CodexKit API request failed: ${response.status}`);
@@ -11,13 +19,13 @@ async function readJson<TData>(path: string): Promise<TData> {
 }
 
 export function readHealth(): Promise<HealthResponse> {
-  return readJson<HealthResponse>("/api/health");
+  return readJson<HealthResponse>(client.health.$get());
 }
 
-export function readSessions(): Promise<SessionSummary[]> {
-  return readJson<SessionSummary[]>("/api/sessions");
+export function readSessions(): Promise<SessionsResponse> {
+  return readJson<SessionsResponse>(client.sessions.$get());
 }
 
-export function readConfigOverview(): Promise<ConfigOverview> {
-  return readJson<ConfigOverview>("/api/config/overview");
+export function readConfigOverview(): Promise<ConfigOverviewResponse> {
+  return readJson<ConfigOverviewResponse>(client.config.overview.$get());
 }

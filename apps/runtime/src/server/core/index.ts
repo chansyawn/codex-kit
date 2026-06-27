@@ -1,4 +1,30 @@
-import type { ConfigOverview, SessionSummary } from "@/shared/api";
+export type SessionSource = "codex-app" | "codex-cli" | "unknown";
+
+export type SessionSummary = {
+  branch?: string;
+  cwd: string;
+  id: string;
+  lastActivityAt: string;
+  source: SessionSource;
+  title: string;
+};
+
+export type ConfigEntry = {
+  key: string;
+  valuePreview: string;
+};
+
+export type ProjectConfigEntry = {
+  path: string;
+  trustedLevel?: string;
+  values: ConfigEntry[];
+};
+
+export type ConfigOverview = {
+  global: ConfigEntry[];
+  projects: ProjectConfigEntry[];
+  sourcePath: string;
+};
 
 export type CodexKitCoreOptions = {
   codexHome: string;

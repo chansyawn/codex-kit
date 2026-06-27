@@ -1,0 +1,30 @@
+import { Hono } from "hono";
+
+import { createCodexKitCore } from "@/server/core";
+
+export type RuntimeApiOptions = {
+  codexHome: string;
+  now?: () => Date;
+  startedAt: number;
+  version: string;
+};
+
+export function createRuntimeApi(options: RuntimeApiOptions) {
+  const core = createCodexKitCore({
+    codexHome: options.codexHome,
+    now: options.now,
+  });
+
+  return new Hono()
+    .get("/health", (context) =>
+      context.json({
+        ok: true,
+        uptimeMs: Date.now() - options.startedAt,
+        version: options.version,
+      }),
+    )
+    .get("/sessions", async (context) => context.json(await core.sessions.list()))
+    .get("/config/overview", async (context) => context.json(await core.config.getOverview()));
+}
+
+export type RuntimeApi = ReturnType<typeof createRuntimeApi>;
