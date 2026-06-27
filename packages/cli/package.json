@@ -6,8 +6,7 @@
     "codexkit": "./dist/cli.mjs"
   },
   "files": [
-    "dist",
-    "runtime"
+    "dist"
   ],
   "type": "module",
   "scripts": {

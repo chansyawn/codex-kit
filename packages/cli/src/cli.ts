@@ -274,7 +274,7 @@ async function importRuntimeAppModule(): Promise<RuntimeAppModule> {
 }
 
 function resolveRuntimePath(...segments: string[]): string {
-  return fileURLToPath(new URL(`../runtime/${segments.join("/")}`, import.meta.url));
+  return fileURLToPath(new URL(`./runtime/${segments.join("/")}`, import.meta.url));
 }
 
 function resolveWorkspaceAppRoot(): string {

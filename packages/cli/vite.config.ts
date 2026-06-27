@@ -5,11 +5,11 @@ export default defineConfig({
     copy: [
       {
         from: "../../apps/runtime/dist/server",
-        to: "runtime",
+        to: "dist/runtime",
       },
       {
         from: "../../apps/runtime/dist/client",
-        to: "runtime",
+        to: "dist/runtime",
       },
     ],
     deps: {
