@@ -2,27 +2,21 @@
   "name": "@codexkit/runtime",
   "version": "0.0.0",
   "private": true,
-  "bin": {
-    "codexkit": "./dist/cli.mjs",
-    "runtime": "./dist/cli.mjs"
-  },
+  "bin": "./dist/cli.mjs",
   "files": [
     "dist",
     "runtime"
   ],
   "type": "module",
-  "exports": {
-    "./cli": "./dist/cli.mjs",
-    "./package.json": "./package.json"
-  },
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
+    "cli": "vp run codexkit-app#build && vp pack && node dist/cli.mjs",
     "test": "vp test",
     "check": "vp check"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.7",
+    "@hono/node-server": "catalog:",
     "cac": "^6.7.14",
     "vite": "catalog:"
   },

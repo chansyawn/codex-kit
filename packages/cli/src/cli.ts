@@ -211,6 +211,7 @@ cli
     if (action === "ensure") {
       const state = await ensureServer(options);
       console.log(`CodexKit runtime available at ${createDashboardUrl(state.host, state.port)}`);
+      exitSuccessfully();
       return;
     }
 
@@ -224,6 +225,7 @@ cli
   .action(async (name: HookAction, options: ServerOptions) => {
     if (name === "session-start") {
       await handleSessionStart(options);
+      exitSuccessfully();
       return;
     }
 
@@ -234,7 +236,10 @@ cli
   .command("open", "Print the dashboard URL")
   .option("--host <host>", "Runtime host", { default: DEFAULT_HOST })
   .option("--port <port>", "Runtime port. Omit it to let the system assign one.")
-  .action(openDashboard);
+  .action(async (options: ServerOptions) => {
+    await openDashboard(options);
+    exitSuccessfully();
+  });
 
 cli.command("doctor", "Print CodexKit environment diagnostics").action(async () => {
   const codexHome = getCodexHome();
@@ -245,13 +250,18 @@ cli.command("doctor", "Print CodexKit environment diagnostics").action(async () 
 
   if (state && (await isRuntimeHealthy(state))) {
     console.log(`Runtime URL: ${createDashboardUrl(state.host, state.port)}`);
+    exitSuccessfully();
     return;
   }
 
   console.log("Runtime URL: not running");
+  exitSuccessfully();
 });
 
-cli.command("stop", "Stop the local CodexKit runtime server").action(stopServer);
+cli.command("stop", "Stop the local CodexKit runtime server").action(async () => {
+  await stopServer();
+  exitSuccessfully();
+});
 
 cli.help();
 cli.version(VERSION);
@@ -338,6 +348,7 @@ async function isRuntimeHealthy(state: RuntimeState): Promise<boolean> {
 
   try {
     const response = await fetch(`${createDashboardUrl(state.host, state.port)}/api/health`);
+    await response.arrayBuffer();
 
     return response.ok;
   } catch {
@@ -368,4 +379,8 @@ function waitForShutdown(): Promise<never> {
   return new Promise<never>(() => {
     // Keep the process alive until an explicit signal closes the server.
   });
+}
+
+function exitSuccessfully(): never {
+  process.exit(0);
 }
