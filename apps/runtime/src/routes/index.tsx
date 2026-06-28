@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 
 import { readConfigOverview, readHealth, readSessions } from "@/app/codexkit-api";
 import { useRuntimeSettings } from "@/app/settings";
-import { m } from "@/paraglide/messages";
+import { m } from "@/locales/paraglide/messages";
 import type { RuntimeLocale } from "@/shared/settings";
 import { Button } from "@/ui/components/button";
 import { cn } from "@/ui/lib/utils";

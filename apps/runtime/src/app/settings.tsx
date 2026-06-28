@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 
 import { patchSettings, readSettings } from "@/app/codexkit-api";
-import { setLocale as setParaglideLocale } from "@/paraglide/runtime";
+import { setLocale as setParaglideLocale } from "@/locales/paraglide/runtime";
 import {
   createDefaultRuntimeSettings,
   normalizeLocale,
