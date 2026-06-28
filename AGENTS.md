@@ -17,10 +17,11 @@ plugin hook -> codexkit CLI -> local Hono runtime -> React dashboard -> /api typ
 ```text
 .
 ├── apps/runtime/        # React + Hono dashboard runtime
-│   ├── src/app/         # App providers, preferences, typed API client
+│   ├── src/app/         # App shell providers and document-level state
+│   ├── src/features/    # Feature-first runtime modules
 │   ├── src/routes/      # TanStack Router routes
 │   ├── src/server/      # Hono app, API routes, runtime entry
-│   ├── src/server/core/ # CodexKit domain/data interface
+│   ├── src/locales/     # Runtime messages and generated Paraglide output
 │   └── src/ui/          # Shared UI primitives and utilities
 ├── packages/cli/        # codexkit CLI; starts/stops local runtime
 └── plugin/              # Codex plugin manifest, hooks, and skill

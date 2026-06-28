@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 
-import { patchSettings, readSettings } from "@/app/codexkit-api";
 import { setLocale as setParaglideLocale } from "@/locales/paraglide/runtime";
+
+import { patchSettings, readSettings } from "./client";
 import {
   createDefaultRuntimeSettings,
   normalizeLocale,
@@ -12,7 +13,7 @@ import {
   type RuntimeSettings,
   type RuntimeSettingsPatch,
   type ThemeMode,
-} from "@/shared/settings";
+} from "./model";
 
 type RuntimeSettingsContextValue = {
   settings: RuntimeSettings;

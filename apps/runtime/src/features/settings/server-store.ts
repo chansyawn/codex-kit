@@ -7,7 +7,7 @@ import {
   normalizeRuntimeSettingsPatch,
   type RuntimeSettings,
   type RuntimeSettingsPatch,
-} from "@/shared/settings";
+} from "./model";
 
 const CODEXKIT_DIRECTORY_NAME = ".codexkit";
 const SETTINGS_FILE_NAME = "settings.json";

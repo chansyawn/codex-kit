@@ -4,11 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  createRuntimeSettingsStore,
-  getSettingsPath,
-  readRuntimeSettings,
-} from "@/server/core/settings-store";
+import { createRuntimeSettingsStore, getSettingsPath, readRuntimeSettings } from "./server-store";
 
 describe("runtime settings storage", () => {
   it("returns default settings when settings.json does not exist", async () => {

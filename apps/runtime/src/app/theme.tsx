@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { useRuntimeSettings } from "@/app/settings";
-import type { ResolvedTheme, ThemeMode } from "@/shared/settings";
+import { useRuntimeSettings } from "@/features/settings/client-provider";
+import type { ResolvedTheme, ThemeMode } from "@/features/settings/model";
 
 type ThemeContextValue = {
   themeMode: ThemeMode;
