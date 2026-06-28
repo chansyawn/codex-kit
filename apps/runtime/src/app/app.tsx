@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 
 import { DirectionStateProvider } from "@/app/direction";
+import { RuntimeSettingsProvider } from "@/app/settings";
 import { ThemeStateProvider } from "@/app/theme";
 import { routeTree } from "@/routeTree.gen";
 import { TooltipProvider } from "@/ui/components/tooltip";
@@ -18,13 +19,15 @@ declare module "@tanstack/react-router" {
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeStateProvider>
-        <DirectionStateProvider>
-          <TooltipProvider>
-            <RouterProvider router={router} />
-          </TooltipProvider>
-        </DirectionStateProvider>
-      </ThemeStateProvider>
+      <RuntimeSettingsProvider>
+        <ThemeStateProvider>
+          <DirectionStateProvider>
+            <TooltipProvider>
+              <RouterProvider router={router} />
+            </TooltipProvider>
+          </DirectionStateProvider>
+        </ThemeStateProvider>
+      </RuntimeSettingsProvider>
     </QueryClientProvider>
   );
 }

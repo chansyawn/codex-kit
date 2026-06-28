@@ -1,24 +1,21 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { serve } from "@hono/node-server";
 import { cac } from "cac";
 
+import {
+  readRuntimeState,
+  removeRuntimeState,
+  type RuntimeState,
+  writeRuntimeState,
+} from "./runtime-state.ts";
+
 const DEFAULT_HOST = "127.0.0.1";
 const SYSTEM_ASSIGNED_PORT = 0;
 const VERSION = "0.0.0";
-const STATE_FILE_NAME = "codexkit-runtime.json";
 const ENSURE_TIMEOUT_MS = 8_000;
-
-type RuntimeState = {
-  host: string;
-  pid: number;
-  port: number;
-  startedAt: string;
-};
 
 type RuntimeAppModule = {
   createRuntimeApp?: (options: {
@@ -36,10 +33,6 @@ type RuntimeAppModule = {
 
 function getCodexHome(): string {
   return process.env.CODEX_HOME ?? `${process.env.HOME ?? ""}/.codex`;
-}
-
-function getStatePath(codexHome: string): string {
-  return join(codexHome, STATE_FILE_NAME);
 }
 
 function createDashboardUrl(host: string, port: number): string {
@@ -162,23 +155,6 @@ async function importRuntimeAppModule(): Promise<RuntimeAppModule> {
 
 function resolveRuntimePath(...segments: string[]): string {
   return fileURLToPath(new URL(`./runtime/${segments.join("/")}`, import.meta.url));
-}
-
-async function writeRuntimeState(codexHome: string, state: RuntimeState): Promise<void> {
-  await mkdir(codexHome, { recursive: true });
-  await writeFile(getStatePath(codexHome), `${JSON.stringify(state, null, 2)}\n`);
-}
-
-async function readRuntimeState(codexHome: string): Promise<RuntimeState | null> {
-  try {
-    return JSON.parse(await readFile(getStatePath(codexHome), "utf8")) as RuntimeState;
-  } catch {
-    return null;
-  }
-}
-
-async function removeRuntimeState(codexHome: string): Promise<void> {
-  await rm(getStatePath(codexHome), { force: true });
 }
 
 function startBackgroundServer(): void {

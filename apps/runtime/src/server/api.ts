@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { createCodexKitCore } from "@/server/core";
+import { normalizeRuntimeSettingsPatch } from "@/shared/settings";
 
 export type RuntimeApiOptions = {
   codexHome: string;
@@ -24,6 +25,12 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
       }),
     )
     .get("/sessions", async (context) => context.json(await core.sessions.list()))
+    .get("/settings", async (context) => context.json(await core.settings.get()))
+    .patch("/settings", async (context) => {
+      const rawPatch: unknown = await context.req.json().catch(() => ({}));
+
+      return context.json(await core.settings.patch(normalizeRuntimeSettingsPatch(rawPatch)));
+    })
     .get("/config/overview", async (context) => context.json(await core.config.getOverview()));
 }
 

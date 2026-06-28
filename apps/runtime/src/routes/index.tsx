@@ -12,8 +12,9 @@ import {
 import type { ReactNode } from "react";
 
 import { readConfigOverview, readHealth, readSessions } from "@/app/codexkit-api";
+import { useRuntimeSettings } from "@/app/settings";
 import { m } from "@/paraglide/messages";
-import { getLocale, setLocale, type Locale } from "@/paraglide/runtime";
+import type { RuntimeLocale } from "@/shared/settings";
 import { Button } from "@/ui/components/button";
 import { cn } from "@/ui/lib/utils";
 
@@ -36,7 +37,10 @@ function IndexPage() {
   });
 
   const isRefreshing = healthQuery.isFetching || sessionsQuery.isFetching || configQuery.isFetching;
-  const locale = getLocale();
+  const {
+    settings: { locale },
+    setLocalePreference,
+  } = useRuntimeSettings();
 
   return (
     <main className="bg-background text-foreground min-h-svh">
@@ -54,10 +58,18 @@ function IndexPage() {
               className="border-border inline-flex h-8 items-center rounded-lg border"
             >
               <LanguagesIcon className="text-muted-foreground ms-2 size-4" aria-hidden="true" />
-              <LanguageButton currentLocale={locale} locale="en">
+              <LanguageButton
+                currentLocale={locale}
+                locale="en"
+                onSelectLocale={setLocalePreference}
+              >
                 {m.language_english()}
               </LanguageButton>
-              <LanguageButton currentLocale={locale} locale="zh-CN">
+              <LanguageButton
+                currentLocale={locale}
+                locale="zh-CN"
+                onSelectLocale={setLocalePreference}
+              >
                 {m.language_chinese()}
               </LanguageButton>
             </div>
@@ -173,11 +185,12 @@ function IndexPage() {
 
 type LanguageButtonProps = {
   children: ReactNode;
-  currentLocale: Locale;
-  locale: Locale;
+  currentLocale: RuntimeLocale;
+  locale: RuntimeLocale;
+  onSelectLocale: (locale: RuntimeLocale) => void;
 };
 
-function LanguageButton({ children, currentLocale, locale }: LanguageButtonProps) {
+function LanguageButton({ children, currentLocale, locale, onSelectLocale }: LanguageButtonProps) {
   const isActive = currentLocale === locale;
 
   return (
@@ -189,7 +202,7 @@ function LanguageButton({ children, currentLocale, locale }: LanguageButtonProps
         isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
       onClick={() => {
-        void setLocale(locale);
+        onSelectLocale(locale);
       }}
     >
       {children}

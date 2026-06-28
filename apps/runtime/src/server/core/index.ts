@@ -1,3 +1,6 @@
+import { createRuntimeSettingsStore } from "@/server/core/settings-store";
+import type { RuntimeSettings, RuntimeSettingsPatch } from "@/shared/settings";
+
 export type SessionSource = "codex-app" | "codex-cli" | "unknown";
 
 export type SessionSummary = {
@@ -35,6 +38,10 @@ export type CodexKitCore = {
   config: {
     getOverview: () => Promise<ConfigOverview>;
   };
+  settings: {
+    get: () => Promise<RuntimeSettings>;
+    patch: (patch: RuntimeSettingsPatch) => Promise<RuntimeSettings>;
+  };
   sessions: {
     list: () => Promise<SessionSummary[]>;
   };
@@ -42,12 +49,17 @@ export type CodexKitCore = {
 
 export function createCodexKitCore(options: CodexKitCoreOptions): CodexKitCore {
   const now = options.now ?? (() => new Date());
+  const settings = createRuntimeSettingsStore(options.codexHome);
 
   return {
     config: {
       async getOverview() {
         return createStubConfigOverview(options.codexHome);
       },
+    },
+    settings: {
+      get: settings.read,
+      patch: settings.patch,
     },
     sessions: {
       async list() {

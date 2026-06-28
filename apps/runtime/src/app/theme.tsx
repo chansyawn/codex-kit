@@ -1,11 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import {
-  patchAppearancePreferences,
-  readAppearancePreferences,
-  type ResolvedTheme,
-  type ThemeMode,
-} from "@/app/preferences";
+import { useRuntimeSettings } from "@/app/settings";
+import type { ResolvedTheme, ThemeMode } from "@/shared/settings";
 
 type ThemeContextValue = {
   themeMode: ThemeMode;
@@ -36,9 +32,11 @@ function resolveTheme(themeMode: ThemeMode, systemPrefersDark: boolean): Resolve
 }
 
 export function ThemeStateProvider({ children }: ThemeStateProviderProps) {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>(
-    () => readAppearancePreferences().themeMode,
-  );
+  const {
+    settings: { theme },
+    setTheme,
+  } = useRuntimeSettings();
+  const themeMode = theme;
   const [systemPrefersDark, setSystemPrefersDark] = useState(readSystemPrefersDark);
   const resolvedTheme = resolveTheme(themeMode, systemPrefersDark);
 
@@ -68,12 +66,10 @@ export function ThemeStateProvider({ children }: ThemeStateProviderProps) {
   const contextValue = useMemo<ThemeContextValue>(
     () => ({
       themeMode,
-      setThemeMode: (nextThemeMode) => {
-        setThemeModeState(patchAppearancePreferences({ themeMode: nextThemeMode }).themeMode);
-      },
+      setThemeMode: setTheme,
       resolvedTheme,
     }),
-    [resolvedTheme, themeMode],
+    [resolvedTheme, setTheme, themeMode],
   );
 
   return <ThemeStateContext.Provider value={contextValue}>{children}</ThemeStateContext.Provider>;
