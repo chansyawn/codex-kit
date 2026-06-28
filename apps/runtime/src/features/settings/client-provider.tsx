@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { createContext, use, useCallback, useEffect, useMemo, type ReactNode } from "react";
 
-import { setLocale as setParaglideLocale } from "@/locales/paraglide/runtime";
+import {
+  overwriteGetLocale,
+  overwriteSetLocale,
+  setLocale as setParaglideLocale,
+} from "@/locales/paraglide/runtime";
 
 import { patchSettings, readSettings } from "./client";
 import {
@@ -15,14 +19,28 @@ import {
   type ThemeMode,
 } from "./model";
 
-type RuntimeSettingsContextValue = {
-  settings: RuntimeSettings;
+type RuntimeLocaleContextValue = {
+  locale: RuntimeLocale;
   setLocalePreference: (locale: RuntimeLocale) => void;
+};
+
+type RuntimeThemePreferenceContextValue = {
+  theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
 };
 
-const RuntimeSettingsContext = createContext<RuntimeSettingsContextValue | null>(null);
+const RuntimeLocaleContext = createContext<RuntimeLocaleContextValue | null>(null);
+const RuntimeThemePreferenceContext = createContext<RuntimeThemePreferenceContextValue | null>(
+  null,
+);
 const SETTINGS_QUERY_KEY = ["settings"] as const;
+let runtimeLocalePreference = createDefaultRuntimeSettings().locale;
+
+// The configured Paraglide strategy reads browser language, so runtime settings provide the UI locale.
+overwriteGetLocale(() => runtimeLocalePreference);
+overwriteSetLocale((nextLocale) => {
+  runtimeLocalePreference = normalizeLocale(nextLocale);
+});
 
 type RuntimeSettingsProviderProps = {
   children: ReactNode;
@@ -36,9 +54,10 @@ export function RuntimeSettingsProvider({ children }: RuntimeSettingsProviderPro
     queryKey: SETTINGS_QUERY_KEY,
   });
   const settings = settingsQuery.data;
+  runtimeLocalePreference = settings.locale;
 
   useEffect(() => {
-    void setParaglideLocale(settings.locale);
+    void setParaglideLocale(settings.locale, { reload: false });
   }, [settings.locale]);
 
   useEffect(() => {
@@ -47,7 +66,7 @@ export function RuntimeSettingsProvider({ children }: RuntimeSettingsProviderPro
     }
   }, [settingsQuery.error, settingsQuery.isError]);
 
-  const settingsMutation = useMutation({
+  const { mutate: mutateSettings } = useMutation({
     mutationFn: patchSettings,
     onError(error: unknown) {
       console.error("Unable to save CodexKit settings.", error);
@@ -66,35 +85,62 @@ export function RuntimeSettingsProvider({ children }: RuntimeSettingsProviderPro
     },
   });
 
-  const contextValue = useMemo<RuntimeSettingsContextValue>(
+  const setLocalePreference = useCallback(
+    (nextLocale: RuntimeLocale) => {
+      const locale = normalizeLocale(nextLocale);
+
+      mutateSettings({ locale });
+    },
+    [mutateSettings],
+  );
+  const setTheme = useCallback(
+    (nextTheme: ThemeMode) => {
+      const theme = normalizeTheme(nextTheme);
+
+      mutateSettings({ theme });
+    },
+    [mutateSettings],
+  );
+
+  const localeContextValue = useMemo<RuntimeLocaleContextValue>(
     () => ({
-      settings,
-      setLocalePreference: (nextLocale) => {
-        const locale = normalizeLocale(nextLocale);
-
-        settingsMutation.mutate({ locale });
-      },
-      setTheme: (nextTheme) => {
-        const theme = normalizeTheme(nextTheme);
-
-        settingsMutation.mutate({ theme });
-      },
+      locale: settings.locale,
+      setLocalePreference,
     }),
-    [settings, settingsMutation],
+    [settings.locale, setLocalePreference],
+  );
+  const themePreferenceContextValue = useMemo<RuntimeThemePreferenceContextValue>(
+    () => ({
+      theme: settings.theme,
+      setTheme,
+    }),
+    [settings.theme, setTheme],
   );
 
   return (
-    <RuntimeSettingsContext.Provider value={contextValue}>
-      {children}
-    </RuntimeSettingsContext.Provider>
+    <RuntimeLocaleContext.Provider value={localeContextValue}>
+      <RuntimeThemePreferenceContext.Provider value={themePreferenceContextValue}>
+        {children}
+      </RuntimeThemePreferenceContext.Provider>
+    </RuntimeLocaleContext.Provider>
   );
 }
 
-export function useRuntimeSettings() {
-  const context = useContext(RuntimeSettingsContext);
+export function useRuntimeLocale() {
+  const context = use(RuntimeLocaleContext);
 
   if (!context) {
-    throw new Error("useRuntimeSettings must be used within RuntimeSettingsProvider");
+    throw new Error("useRuntimeLocale must be used within RuntimeSettingsProvider");
+  }
+
+  return context;
+}
+
+export function useRuntimeThemePreference() {
+  const context = use(RuntimeThemePreferenceContext);
+
+  if (!context) {
+    throw new Error("useRuntimeThemePreference must be used within RuntimeSettingsProvider");
   }
 
   return context;

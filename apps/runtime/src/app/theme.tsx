@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { useRuntimeSettings } from "@/features/settings/client-provider";
+import { useRuntimeThemePreference } from "@/features/settings/client-provider";
 import type { ResolvedTheme, ThemeMode } from "@/features/settings/model";
 
 type ThemeContextValue = {
@@ -32,10 +32,7 @@ function resolveTheme(themeMode: ThemeMode, systemPrefersDark: boolean): Resolve
 }
 
 export function ThemeStateProvider({ children }: ThemeStateProviderProps) {
-  const {
-    settings: { theme },
-    setTheme,
-  } = useRuntimeSettings();
+  const { theme, setTheme } = useRuntimeThemePreference();
   const themeMode = theme;
   const [systemPrefersDark, setSystemPrefersDark] = useState(readSystemPrefersDark);
   const resolvedTheme = resolveTheme(themeMode, systemPrefersDark);
@@ -76,7 +73,7 @@ export function ThemeStateProvider({ children }: ThemeStateProviderProps) {
 }
 
 export function useThemeState() {
-  const context = useContext(ThemeStateContext);
+  const context = use(ThemeStateContext);
 
   if (!context) {
     throw new Error("useThemeState must be used within ThemeStateProvider");

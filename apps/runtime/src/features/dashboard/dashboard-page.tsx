@@ -10,15 +10,12 @@ import {
   StatusPanel,
 } from "@/features/dashboard/components";
 import { useDashboardData } from "@/features/dashboard/use-dashboard-data";
-import { useRuntimeSettings } from "@/features/settings/client-provider";
+import { useRuntimeLocale } from "@/features/settings/client-provider";
 import { m } from "@/locales/paraglide/messages";
 
 export function DashboardPage() {
   const { configQuery, healthQuery, isRefreshing, refreshAll, sessionsQuery } = useDashboardData();
-  const {
-    settings: { locale },
-    setLocalePreference,
-  } = useRuntimeSettings();
+  const { locale, setLocalePreference } = useRuntimeLocale();
 
   return (
     <main className="bg-background text-foreground min-h-svh">
