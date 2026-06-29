@@ -1,10 +1,16 @@
-export type SessionSource = "codex-app" | "codex-cli" | "unknown";
-
 export type SessionSummary = {
-  branch?: string;
+  archived: boolean;
+  archivedAt: string | null;
+  branch: string | null;
+  createdAt: string;
   cwd: string;
   id: string;
   lastActivityAt: string;
-  source: SessionSource;
+  model: string;
+  modelProvider: string;
+  preview: string;
+  rolloutPath: string;
+  source: string;
   title: string;
+  tokensUsed: number;
 };

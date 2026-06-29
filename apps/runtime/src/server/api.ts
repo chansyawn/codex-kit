@@ -7,13 +7,11 @@ import { createRuntimeSettingsStore } from "@/features/settings/server-store";
 
 export type RuntimeApiOptions = {
   codexHome: string;
-  now?: () => Date;
   startedAt: number;
   version: string;
 };
 
 export function createRuntimeApi(options: RuntimeApiOptions) {
-  const now = options.now ?? (() => new Date());
   const settings = createRuntimeSettingsStore(options.codexHome);
 
   return new Hono()
@@ -24,7 +22,9 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
         version: options.version,
       }),
     )
-    .get("/sessions", async (context) => context.json(await listSessions({ now: now() })))
+    .get("/sessions", async (context) =>
+      context.json(await listSessions({ codexHome: options.codexHome })),
+    )
     .get("/settings", async (context) => context.json(await settings.read()))
     .patch("/settings", async (context) => {
       const rawPatch: unknown = await context.req.json().catch(() => ({}));
