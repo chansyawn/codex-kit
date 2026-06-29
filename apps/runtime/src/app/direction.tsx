@@ -1,17 +1,21 @@
 import { useEffect, type ReactNode } from "react";
 
+import { useRuntimeLocale } from "@/features/settings/client-provider";
+import { resolveLocaleDirection } from "@/features/settings/model";
 import { DirectionProvider } from "@/ui/components/direction";
 
 type DirectionStateProviderProps = {
   children: ReactNode;
 };
 
-const DOCUMENT_DIRECTION = "ltr";
-
 export function DirectionStateProvider({ children }: DirectionStateProviderProps) {
-  useEffect(() => {
-    document.documentElement.dir = DOCUMENT_DIRECTION;
-  }, []);
+  const { locale } = useRuntimeLocale();
+  const direction = resolveLocaleDirection(locale);
 
-  return <DirectionProvider direction={DOCUMENT_DIRECTION}>{children}</DirectionProvider>;
+  useEffect(() => {
+    document.documentElement.dir = direction;
+    document.documentElement.lang = locale;
+  }, [direction, locale]);
+
+  return <DirectionProvider direction={direction}>{children}</DirectionProvider>;
 }

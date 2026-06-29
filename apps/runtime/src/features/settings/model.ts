@@ -3,6 +3,7 @@ export const LOCALE_OPTIONS = ["en", "zh-CN"] as const;
 
 export type ThemeMode = (typeof THEME_OPTIONS)[number];
 export type ResolvedTheme = "light" | "dark";
+export type RuntimeDirection = "ltr" | "rtl";
 export type RuntimeLocale = (typeof LOCALE_OPTIONS)[number];
 
 export type RuntimeSettings = {
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS: RuntimeSettings = {
   locale: "en",
   theme: "system",
 };
+const RTL_LANGUAGE_CODES = new Set(["ar", "fa", "he", "ps", "ur"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -29,6 +31,12 @@ export function normalizeTheme(input: unknown): ThemeMode {
 
 export function normalizeLocale(input: unknown): RuntimeLocale {
   return input === "en" || input === "zh-CN" ? input : DEFAULT_SETTINGS.locale;
+}
+
+export function resolveLocaleDirection(locale: string): RuntimeDirection {
+  const language = locale.split("-")[0]?.toLowerCase();
+
+  return language && RTL_LANGUAGE_CODES.has(language) ? "rtl" : "ltr";
 }
 
 export function createDefaultRuntimeSettings(): RuntimeSettings {
