@@ -1,9 +1,8 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { LanguagesIcon, RefreshCwIcon } from "lucide-react";
+import { LanguagesIcon } from "lucide-react";
 
 import { AppSidebar } from "@/app/layout/app-sidebar";
 import { isRuntimePath, routeLabels } from "@/app/layout/navigation";
-import { useDashboardData } from "@/features/dashboard/use-dashboard-data";
 import { useRuntimeLocale } from "@/features/settings/client-provider";
 import type { RuntimeLocale } from "@/features/settings/model";
 import { m } from "@/locales/paraglide/messages";
@@ -15,7 +14,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/ui/components/breadcrumb";
-import { Button } from "@/ui/components/button";
 import { Separator } from "@/ui/components/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/ui/components/sidebar";
 import { cn } from "@/ui/lib/utils";
@@ -26,7 +24,6 @@ export function AppShell() {
   });
   const activePath = isRuntimePath(pathname) ? pathname : "/";
   const { locale, setLocalePreference } = useRuntimeLocale();
-  const { isRefreshing, refreshAll } = useDashboardData();
 
   return (
     <SidebarProvider>
@@ -50,13 +47,6 @@ export function AppShell() {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <LanguageSwitcher currentLocale={locale} onSelectLocale={setLocalePreference} />
-            <Button variant="outline" onClick={refreshAll}>
-              <RefreshCwIcon
-                data-icon="inline-start"
-                className={cn(isRefreshing && "animate-spin")}
-              />
-              {m.refresh()}
-            </Button>
           </div>
         </header>
         <div className="flex flex-1 flex-col p-4 pt-0">

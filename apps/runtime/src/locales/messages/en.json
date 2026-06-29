@@ -12,6 +12,7 @@
   "sidebar_product_subtitle": "Local runtime",
   "sidebar_support": "Support",
   "sidebar_feedback": "Feedback",
+  "dashboard_detail": "Runtime status, sessions, config, and the local CodexKit call flow.",
   "runtime_label": "Runtime",
   "runtime_online": "Online",
   "runtime_waiting": "Waiting",

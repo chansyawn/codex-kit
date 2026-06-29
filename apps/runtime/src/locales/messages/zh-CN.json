@@ -12,6 +12,7 @@
   "sidebar_product_subtitle": "本地运行时",
   "sidebar_support": "支持",
   "sidebar_feedback": "反馈",
+  "dashboard_detail": "运行时状态、会话、配置，以及本地 CodexKit 调用流程。",
   "runtime_label": "运行时",
   "runtime_online": "在线",
   "runtime_waiting": "等待中",
