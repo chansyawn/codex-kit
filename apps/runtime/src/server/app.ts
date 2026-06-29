@@ -15,7 +15,6 @@ type RuntimeBindings = {
 
 export type RuntimeAppOptions = {
   codexHome: string;
-  now?: () => Date;
   startedAt?: number;
   staticRoot?: string;
   version: string;
@@ -32,7 +31,6 @@ export function createRuntimeApp(options: RuntimeAppOptions): Hono<{ Bindings: R
     "/api",
     createRuntimeApi({
       codexHome: options.codexHome,
-      now: options.now,
       startedAt,
       version: options.version,
     }),
