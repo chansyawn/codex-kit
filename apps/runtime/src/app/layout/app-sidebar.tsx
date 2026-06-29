@@ -1,34 +1,22 @@
 "use client";
 
 import { Link } from "@tanstack/react-router";
-import { BoxesIcon, LifeBuoyIcon, SendIcon } from "lucide-react";
+import { BoxesIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 
 import { NavMain } from "@/app/layout/nav-main";
-import { NavSecondary } from "@/app/layout/nav-secondary";
 import { mainNavItems, type RuntimePath } from "@/app/layout/navigation";
+import { SidebarPreferences } from "@/app/layout/sidebar-preferences";
 import { m } from "@/locales/paraglide/messages";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/ui/components/sidebar";
-
-const secondaryNavItems = [
-  {
-    icon: <LifeBuoyIcon aria-hidden="true" />,
-    title: () => m.sidebar_support(),
-    url: "https://github.com/openai/codex",
-  },
-  {
-    icon: <SendIcon aria-hidden="true" />,
-    title: () => m.sidebar_feedback(),
-    url: "https://github.com/openai/codex/issues",
-  },
-];
 
 type AppSidebarProps = ComponentProps<typeof Sidebar> & {
   activePath: RuntimePath;
@@ -54,8 +42,10 @@ export function AppSidebar({ activePath, ...props }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain activePath={activePath} items={mainNavItems} />
-        <NavSecondary items={secondaryNavItems} className="mt-auto" />
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarPreferences />
+      </SidebarFooter>
     </Sidebar>
   );
 }
