@@ -3,16 +3,16 @@ import { basename } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import type {
-  DashboardActivityDay,
   DashboardGroupBy,
   DashboardGroupMetric,
+  DashboardRange,
   DashboardResponse,
   DashboardSummary,
-  DashboardTrendPoint,
 } from "./model";
 
 export type ReadDashboardOptions = {
   codexHome: string;
+  range?: DashboardRange;
 };
 
 type ThreadRow = {
@@ -24,12 +24,6 @@ type ThreadRow = {
   reasoning_effort: string | null;
   tokens_used: number;
   updated_at_ms: number | null;
-};
-
-type TokenUsageLogRow = {
-  feedback_log_body: string | null;
-  thread_id: string | null;
-  ts: number;
 };
 
 type DashboardThread = {
@@ -46,12 +40,6 @@ type DashboardThread = {
   updatedAtMs: number | null;
 };
 
-type TokenUsageLog = {
-  date: string;
-  threadId: string | null;
-  tokens: number;
-};
-
 type GroupBucket = {
   activeDays: Set<string>;
   key: string;
@@ -61,11 +49,16 @@ type GroupBucket = {
   totalTokens: number;
 };
 
-const TOKEN_USAGE_PATTERN = /total_usage_tokens=(\d+)/;
 const UNKNOWN = "unknown";
 const PROJECTLESS = "Projectless";
 const DAY_IN_MS = 86_400_000;
 const TIME_ZONE = "Asia/Shanghai";
+const DEFAULT_RANGE: DashboardRange = "7d";
+const RANGE_DAYS = {
+  "7d": 7,
+  "30d": 30,
+  "180d": 180,
+} as const satisfies Record<Exclude<DashboardRange, "all">, number>;
 
 const dateFormatter = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
@@ -90,48 +83,44 @@ const EMPTY_SUMMARY: DashboardSummary = {
 
 export async function readDashboard(options: ReadDashboardOptions): Promise<DashboardResponse> {
   const threads = readThreads(`${options.codexHome}/state_5.sqlite`);
-  const tokenUsageLogs = readTokenUsageLogs(`${options.codexHome}/logs_2.sqlite`);
 
-  return createDashboardResponse({ threads, tokenUsageLogs });
+  return createDashboardResponse({
+    range: options.range ?? DEFAULT_RANGE,
+    threads,
+  });
+}
+
+export function normalizeDashboardRange(value: unknown): DashboardRange {
+  if (value === "7d" || value === "30d" || value === "180d" || value === "all") {
+    return value;
+  }
+
+  return DEFAULT_RANGE;
 }
 
 export function createDashboardResponse({
+  range = DEFAULT_RANGE,
   threads,
-  tokenUsageLogs,
 }: {
+  range?: DashboardRange;
   threads: DashboardThread[];
-  tokenUsageLogs: TokenUsageLog[];
 }): DashboardResponse {
-  const threadsById = new Map(threads.map((thread) => [thread.id, thread]));
-  const activityTokensByDay = new Map<string, number>();
-  const sessionCountsByDay = new Map<string, Set<string>>();
+  const scopedThreads = filterThreadsByRange(threads, range);
   const activeDays = new Set<string>();
 
-  for (const thread of threads) {
+  for (const thread of scopedThreads) {
     for (const activeDay of thread.activeDays) {
       activeDays.add(activeDay);
-      upsertSet(sessionCountsByDay, activeDay).add(thread.id);
-    }
-  }
-
-  for (const log of tokenUsageLogs) {
-    activeDays.add(log.date);
-    activityTokensByDay.set(log.date, (activityTokensByDay.get(log.date) ?? 0) + log.tokens);
-
-    if (log.threadId && threadsById.has(log.threadId)) {
-      upsertSet(sessionCountsByDay, log.date).add(log.threadId);
     }
   }
 
   return {
-    activity: createActivity(activityTokensByDay, activeDays),
     groups: {
-      model: createGroupMetrics(threads, "model"),
-      project: createGroupMetrics(threads, "project"),
-      provider: createGroupMetrics(threads, "provider"),
+      model: createGroupMetrics(scopedThreads, "model"),
+      project: createGroupMetrics(scopedThreads, "project"),
+      provider: createGroupMetrics(scopedThreads, "provider"),
     },
-    summary: createSummary(threads, activeDays),
-    trend: createTrend(activityTokensByDay, sessionCountsByDay, activeDays),
+    summary: createSummary(scopedThreads, activeDays),
   };
 }
 
@@ -149,27 +138,6 @@ function readThreads(dbPath: string): DashboardThread[] {
       .all() as ThreadRow[];
 
     return rows.map(mapThreadRow);
-  } catch {
-    return [];
-  } finally {
-    db.close();
-  }
-}
-
-function readTokenUsageLogs(dbPath: string): TokenUsageLog[] {
-  if (!existsSync(dbPath)) return [];
-
-  const db = new DatabaseSync(dbPath, { readOnly: true });
-  try {
-    const rows = db
-      .prepare(
-        `SELECT thread_id, ts, feedback_log_body
-         FROM logs
-         WHERE feedback_log_body LIKE '%post sampling token usage%'`,
-      )
-      .all() as TokenUsageLogRow[];
-
-    return rows.flatMap(mapTokenUsageLogRow);
   } catch {
     return [];
   } finally {
@@ -197,19 +165,6 @@ function mapThreadRow(row: ThreadRow): DashboardThread {
     tokensUsed: Math.max(0, row.tokens_used),
     updatedAtMs: row.updated_at_ms,
   };
-}
-
-function mapTokenUsageLogRow(row: TokenUsageLogRow): TokenUsageLog[] {
-  const match = TOKEN_USAGE_PATTERN.exec(row.feedback_log_body ?? "");
-  if (!match) return [];
-
-  return [
-    {
-      date: toDay(row.ts * 1000),
-      threadId: normalizeThreadId(row.thread_id),
-      tokens: Number(match[1]),
-    },
-  ];
 }
 
 function createSummary(threads: DashboardThread[], activeDays: Set<string>): DashboardSummary {
@@ -274,63 +229,6 @@ function createGroupMetrics(
       totalTokens: bucket.totalTokens,
     }))
     .sort((a, b) => b.totalTokens - a.totalTokens || b.sessionCount - a.sessionCount);
-}
-
-function createTrend(
-  tokenByDay: Map<string, number>,
-  sessionCountsByDay: Map<string, Set<string>>,
-  activeDays: Set<string>,
-): DashboardTrendPoint[] {
-  return [...activeDays].sort().map((date) => ({
-    date,
-    sessions: sessionCountsByDay.get(date)?.size ?? 0,
-    tokens: tokenByDay.get(date) ?? 0,
-  }));
-}
-
-function createActivity(
-  tokenByDay: Map<string, number>,
-  activeDays: Set<string>,
-): DashboardActivityDay[] {
-  const maxTokens = Math.max(0, ...tokenByDay.values());
-  const days = createActivityRange(activeDays);
-
-  return days.map((date) => {
-    const count = tokenByDay.get(date) ?? 0;
-
-    return {
-      count,
-      date,
-      level: getActivityLevel(count, maxTokens),
-    };
-  });
-}
-
-function createActivityRange(activeDays: Set<string>): string[] {
-  if (activeDays.size === 0) return [];
-
-  const sortedDays = [...activeDays].sort();
-  const firstDay = sortedDays[0] ?? toDay(Date.now());
-  const today = toDay(Date.now());
-  const lastDay = sortedDays.at(-1) && sortedDays.at(-1)! > today ? sortedDays.at(-1)! : today;
-  const days: string[] = [];
-  let cursor = firstDay;
-
-  while (cursor <= lastDay) {
-    days.push(cursor);
-    cursor = addDays(cursor, 1);
-  }
-
-  return days;
-}
-
-function getActivityLevel(count: number, maxTokens: number): DashboardActivityDay["level"] {
-  if (count <= 0 || maxTokens <= 0) return 0;
-  const ratio = count / maxTokens;
-  if (ratio <= 0.25) return 1;
-  if (ratio <= 0.5) return 2;
-  if (ratio <= 0.75) return 3;
-  return 4;
 }
 
 function getThreadGroup(
@@ -431,22 +329,53 @@ function normalizeDimension(value: string | null): string {
   return normalizedValue ? normalizedValue : UNKNOWN;
 }
 
-function normalizeThreadId(value: string | null): string | null {
-  const normalizedValue = value?.trim();
-
-  return normalizedValue ? normalizedValue : null;
-}
-
-function upsertSet(map: Map<string, Set<string>>, key: string): Set<string> {
-  const existingSet = map.get(key);
-  if (existingSet) return existingSet;
-
-  const value = new Set<string>();
-  map.set(key, value);
-
-  return value;
-}
-
 function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0);
+}
+
+function filterThreadsByRange(
+  threads: DashboardThread[],
+  range: DashboardRange,
+): DashboardThread[] {
+  if (range === "all") return threads;
+
+  const window = getRangeWindow(range);
+
+  return threads.flatMap((thread) => {
+    const activeAtMs = getThreadActiveAtMs(thread);
+    if (activeAtMs === null || activeAtMs < window.startMs || activeAtMs > window.endMs) {
+      return [];
+    }
+
+    return [
+      {
+        ...thread,
+        activeDays: new Set(
+          [...thread.activeDays].filter((day) => day >= window.startDay && day <= window.endDay),
+        ),
+      },
+    ];
+  });
+}
+
+function getRangeWindow(range: Exclude<DashboardRange, "all">): {
+  endDay: string;
+  endMs: number;
+  startDay: string;
+  startMs: number;
+} {
+  const endMs = Date.now();
+  const endDay = toDay(endMs);
+  const startDay = addDays(endDay, -(RANGE_DAYS[range] - 1));
+
+  return {
+    endDay,
+    endMs,
+    startDay,
+    startMs: Date.parse(`${startDay}T00:00:00+08:00`),
+  };
+}
+
+function getThreadActiveAtMs(thread: DashboardThread): number | null {
+  return thread.updatedAtMs ?? thread.createdAtMs;
 }
