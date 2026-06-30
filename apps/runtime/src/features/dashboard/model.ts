@@ -1,4 +1,5 @@
 export type DashboardGroupBy = "provider" | "model" | "project";
+export type DashboardRange = "7d" | "30d" | "180d" | "all";
 
 export type DashboardSummary = {
   activeDays: number;
@@ -14,18 +15,6 @@ export type DashboardSummary = {
   totalTokens: number;
 };
 
-export type DashboardActivityDay = {
-  count: number;
-  date: string;
-  level: 0 | 1 | 2 | 3 | 4;
-};
-
-export type DashboardTrendPoint = {
-  date: string;
-  sessions: number;
-  tokens: number;
-};
-
 export type DashboardGroupMetric = {
   activeDays: number;
   averageTokensPerSession: number;
@@ -39,8 +28,6 @@ export type DashboardGroupMetric = {
 };
 
 export type DashboardResponse = {
-  activity: DashboardActivityDay[];
   groups: Record<DashboardGroupBy, DashboardGroupMetric[]>;
   summary: DashboardSummary;
-  trend: DashboardTrendPoint[];
 };

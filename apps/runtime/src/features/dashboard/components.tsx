@@ -1,22 +1,13 @@
 import { RefreshCwIcon } from "lucide-react";
-import { ActivityCalendar } from "react-activity-calendar";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, type TooltipContentProps } from "recharts";
 
 import type {
-  DashboardActivityDay,
   DashboardGroupBy,
   DashboardGroupMetric,
+  DashboardRange,
   DashboardResponse,
-  DashboardTrendPoint,
 } from "@/features/dashboard/model";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/ui/components/chart";
 import { Skeleton } from "@/ui/components/skeleton";
 import { cn } from "@/ui/lib/utils";
 
@@ -44,6 +35,41 @@ export function DashboardPageHeader({ isRefreshing, onRefresh }: DashboardPageHe
 
 type RuntimeMessages = ReturnType<typeof useRuntimeI18n>["t"];
 
+type DashboardRangeFilterProps = {
+  onChange: (value: DashboardRange) => void;
+  value: DashboardRange;
+};
+
+const rangeOptions = [
+  { labelKey: "dashboard_range_7d", value: "7d" },
+  { labelKey: "dashboard_range_30d", value: "30d" },
+  { labelKey: "dashboard_range_180d", value: "180d" },
+  { labelKey: "dashboard_range_all", value: "all" },
+] as const satisfies { labelKey: keyof RuntimeMessages; value: DashboardRange }[];
+
+export function DashboardRangeFilter({ onChange, value }: DashboardRangeFilterProps) {
+  const { t } = useRuntimeI18n();
+
+  return (
+    <div className="inline-flex rounded-lg border p-0.5">
+      {rangeOptions.map((option) => {
+        const active = option.value === value;
+
+        return (
+          <Button
+            key={option.value}
+            size="sm"
+            variant={active ? "secondary" : "ghost"}
+            onClick={() => onChange(option.value)}
+          >
+            {t[option.labelKey]()}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function DashboardSummaryCards({ summary }: { summary: DashboardResponse["summary"] }) {
   const { t } = useRuntimeI18n();
   const cards = [
@@ -68,127 +94,6 @@ export function DashboardSummaryCards({ summary }: { summary: DashboardResponse[
           <p className="mt-2 text-2xl font-semibold tabular-nums">{card.value}</p>
         </article>
       ))}
-    </div>
-  );
-}
-
-export function DashboardCharts({
-  activity,
-  trend,
-}: {
-  activity: DashboardActivityDay[];
-  trend: DashboardTrendPoint[];
-}) {
-  const { t } = useRuntimeI18n();
-  const chartConfig = {
-    sessions: {
-      color: "var(--chart-2)",
-      label: t.dashboard_chart_sessions(),
-    },
-    tokens: {
-      color: "var(--chart-1)",
-      label: t.dashboard_chart_tokens(),
-    },
-  } satisfies ChartConfig;
-
-  return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(420px,1fr)]">
-      <section className="bg-card rounded-lg border p-4">
-        <div className="mb-4">
-          <h2 className="font-medium">{t.dashboard_token_trend()}</h2>
-          <p className="text-muted-foreground mt-1 text-sm">{t.dashboard_token_trend_detail()}</p>
-        </div>
-        <ChartContainer config={chartConfig} className="h-72 w-full">
-          <AreaChart data={trend} margin={{ left: 4, right: 12, top: 8 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={24}
-              tickFormatter={formatShortDate}
-            />
-            <YAxis hide domain={[0, "dataMax"]} />
-            <ChartTooltip
-              cursor={false}
-              content={(props: TooltipContentProps) => (
-                <ChartTooltipContent
-                  active={props.active}
-                  label={props.label}
-                  payload={props.payload?.map((item) => ({
-                    color: item.color,
-                    dataKey: String(item.dataKey ?? ""),
-                    name: item.name === undefined ? undefined : String(item.name),
-                    value:
-                      item.dataKey === "tokens"
-                        ? formatTokens(Number(item.value ?? 0))
-                        : String(item.value ?? ""),
-                  }))}
-                />
-              )}
-            />
-            <Area
-              dataKey="tokens"
-              type="monotone"
-              fill="var(--color-tokens)"
-              fillOpacity={0.35}
-              stroke="var(--color-tokens)"
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ChartContainer>
-      </section>
-
-      <section className="bg-card min-w-0 rounded-lg border p-4">
-        <div className="mb-4">
-          <h2 className="font-medium">{t.dashboard_activity()}</h2>
-          <p className="text-muted-foreground mt-1 text-sm">{t.dashboard_activity_detail()}</p>
-        </div>
-        <div className="overflow-x-auto pb-1">
-          <ActivityCalendar
-            data={activity}
-            blockMargin={5}
-            blockRadius={3}
-            blockSize={11}
-            colorScheme="light"
-            fontSize={12}
-            labels={{
-              legend: {
-                less: t.dashboard_calendar_less(),
-                more: t.dashboard_calendar_more(),
-              },
-              months: [
-                t.month_jan(),
-                t.month_feb(),
-                t.month_mar(),
-                t.month_apr(),
-                t.month_may(),
-                t.month_jun(),
-                t.month_jul(),
-                t.month_aug(),
-                t.month_sep(),
-                t.month_oct(),
-                t.month_nov(),
-                t.month_dec(),
-              ],
-              totalCount: "{{year}} · {{count}} Token",
-              weekdays: [
-                t.weekday_sun(),
-                t.weekday_mon(),
-                t.weekday_tue(),
-                t.weekday_wed(),
-                t.weekday_thu(),
-                t.weekday_fri(),
-                t.weekday_sat(),
-              ],
-            }}
-            theme={{
-              light: ["var(--muted)", "#dbeafe", "#93c5fd", "#3b82f6", "#1d4ed8"],
-            }}
-          />
-        </div>
-      </section>
     </div>
   );
 }
@@ -300,10 +205,6 @@ export function DashboardSkeleton() {
           </div>
         ))}
       </div>
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Skeleton className="h-80 rounded-lg" />
-        <Skeleton className="h-80 rounded-lg" />
-      </div>
       <Skeleton className="h-80 rounded-lg" />
     </div>
   );
@@ -349,8 +250,4 @@ function formatDuration(durationMs: number, t: RuntimeMessages): string {
   if (hours > 0) return t.dashboard_duration_hours({ hours, minutes: remainingMinutes });
 
   return t.dashboard_duration_minutes({ minutes: remainingMinutes });
-}
-
-function formatShortDate(date: string): string {
-  return date.slice(5);
 }

@@ -3,16 +3,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { readDashboard } from "./server";
+import { normalizeDashboardRange, readDashboard } from "./server";
 
 describe("dashboard metrics", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("returns empty metrics when Codex databases do not exist", async () => {
     const codexHome = await createTempCodexHome();
 
     await expect(readDashboard({ codexHome })).resolves.toEqual({
-      activity: [],
       groups: {
         model: [],
         project: [],
@@ -31,11 +34,12 @@ describe("dashboard metrics", () => {
         sessionCount: 0,
         totalTokens: 0,
       },
-      trend: [],
     });
   });
 
   it("aggregates session metrics by provider, model, and project", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T12:00:00+08:00"));
     const codexHome = await createTempCodexHome();
     createStateDatabase(codexHome, [
       createThread({
@@ -63,7 +67,6 @@ describe("dashboard metrics", () => {
         tokensUsed: 200,
       }),
     ]);
-    createLogsDatabase(codexHome, []);
 
     const dashboard = await readDashboard({ codexHome });
 
@@ -120,6 +123,8 @@ describe("dashboard metrics", () => {
   });
 
   it("uses session timestamps for durations and activity days", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T12:00:00+08:00"));
     const codexHome = await createTempCodexHome();
     createStateDatabase(codexHome, [
       createThread({
@@ -135,7 +140,6 @@ describe("dashboard metrics", () => {
         updatedAtMs: Date.parse("2026-06-25T05:30:00+08:00"),
       }),
     ]);
-    createLogsDatabase(codexHome, []);
 
     const dashboard = await readDashboard({ codexHome });
 
@@ -144,116 +148,104 @@ describe("dashboard metrics", () => {
     expect(dashboard.summary.longestStreakDays).toBe(2);
   });
 
-  it("builds token trend and activity from joined token usage logs", async () => {
+  it("uses the last seven local dates by default", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T12:00:00+08:00"));
     const codexHome = await createTempCodexHome();
     createStateDatabase(codexHome, [
       createThread({
-        id: "thread-a",
+        id: "start-boundary",
         tokensUsed: 100,
+        updatedAtMs: Date.parse("2026-06-24T00:00:00+08:00"),
       }),
-    ]);
-    createLogsDatabase(codexHome, [
-      createTokenLog({
-        threadId: "thread-a",
-        tokens: 10,
-        ts: Date.parse("2026-06-24T10:00:00+08:00") / 1000,
+      createThread({
+        id: "today",
+        tokensUsed: 200,
+        updatedAtMs: Date.parse("2026-06-30T10:00:00+08:00"),
       }),
-      createTokenLog({
-        threadId: "missing-thread",
-        tokens: 40,
-        ts: Date.parse("2026-06-25T10:00:00+08:00") / 1000,
+      createThread({
+        id: "outside",
+        tokensUsed: 400,
+        updatedAtMs: Date.parse("2026-06-23T23:59:59+08:00"),
       }),
     ]);
 
     const dashboard = await readDashboard({ codexHome });
 
-    expect(dashboard.trend).toEqual([
+    expect(dashboard.summary.sessionCount).toBe(2);
+    expect(dashboard.summary.totalTokens).toBe(300);
+    expect(dashboard.groups.provider).toMatchObject([
       {
-        date: "2026-06-24",
-        sessions: 1,
-        tokens: 10,
-      },
-      {
-        date: "2026-06-25",
-        sessions: 0,
-        tokens: 40,
-      },
-    ]);
-    expect(dashboard.activity.slice(0, 2)).toEqual([
-      {
-        count: 10,
-        date: "2026-06-24",
-        level: 1,
-      },
-      {
-        count: 40,
-        date: "2026-06-25",
-        level: 4,
+        sessionCount: 2,
+        totalTokens: 300,
       },
     ]);
   });
 
-  it("fills inactive dates in the activity calendar range", async () => {
+  it("filters dashboard metrics by 30d, 180d, and all ranges", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-26T12:00:00+08:00"));
+    vi.setSystemTime(new Date("2026-06-30T12:00:00+08:00"));
     const codexHome = await createTempCodexHome();
     createStateDatabase(codexHome, [
       createThread({
-        createdAtMs: Date.parse("2026-06-24T10:00:00+08:00"),
-        id: "thread-a",
+        id: "seven-days",
         tokensUsed: 100,
-        updatedAtMs: Date.parse("2026-06-24T10:00:00+08:00"),
+        updatedAtMs: Date.parse("2026-06-30T10:00:00+08:00"),
       }),
-    ]);
-    createLogsDatabase(codexHome, [
-      createTokenLog({
-        threadId: "thread-a",
-        tokens: 20,
-        ts: Date.parse("2026-06-24T10:00:00+08:00") / 1000,
+      createThread({
+        id: "thirty-days",
+        tokensUsed: 200,
+        updatedAtMs: Date.parse("2026-06-01T00:00:00+08:00"),
+      }),
+      createThread({
+        id: "one-eighty-days",
+        tokensUsed: 300,
+        updatedAtMs: Date.parse("2026-01-02T00:00:00+08:00"),
+      }),
+      createThread({
+        createdAtMs: null,
+        id: "all-only",
+        tokensUsed: 400,
+        updatedAtMs: null,
       }),
     ]);
 
-    try {
-      const dashboard = await readDashboard({ codexHome });
+    await expect(readDashboard({ codexHome, range: "30d" })).resolves.toMatchObject({
+      summary: {
+        sessionCount: 2,
+        totalTokens: 300,
+      },
+    });
+    await expect(readDashboard({ codexHome, range: "180d" })).resolves.toMatchObject({
+      summary: {
+        sessionCount: 3,
+        totalTokens: 600,
+      },
+    });
+    await expect(readDashboard({ codexHome, range: "all" })).resolves.toMatchObject({
+      summary: {
+        sessionCount: 4,
+        totalTokens: 1000,
+      },
+    });
+  });
 
-      expect(dashboard.activity).toEqual([
-        {
-          count: 20,
-          date: "2026-06-24",
-          level: 4,
-        },
-        {
-          count: 0,
-          date: "2026-06-25",
-          level: 0,
-        },
-        {
-          count: 0,
-          date: "2026-06-26",
-          level: 0,
-        },
-      ]);
-    } finally {
-      vi.useRealTimers();
-    }
+  it("falls back to 7d for invalid range values", () => {
+    expect(normalizeDashboardRange(undefined)).toBe("7d");
+    expect(normalizeDashboardRange("invalid")).toBe("7d");
+    expect(normalizeDashboardRange("all")).toBe("all");
   });
 });
 
 type TestThread = {
-  createdAtMs: number;
+  createdAtMs: number | null;
   cwd: string;
   id: string;
   model: string;
   modelProvider: string;
   reasoningEffort: string;
   tokensUsed: number;
-  updatedAtMs: number;
-};
-
-type TestTokenLog = {
-  body: string;
-  threadId: string | null;
-  ts: number;
+  updatedAtMs: number | null;
 };
 
 async function createTempCodexHome(): Promise<string> {
@@ -275,22 +267,6 @@ function createThread(overrides: Partial<TestThread>): TestThread {
     tokensUsed: 0,
     updatedAtMs: Date.parse("2026-06-24T10:00:00+08:00"),
     ...overrides,
-  };
-}
-
-function createTokenLog({
-  threadId,
-  tokens,
-  ts,
-}: {
-  threadId: string | null;
-  tokens: number;
-  ts: number;
-}): TestTokenLog {
-  return {
-    body: `post sampling token usage turn_id=test total_usage_tokens=${tokens} estimated_token_count=Some(1)`,
-    threadId,
-    ts,
   };
 }
 
@@ -328,30 +304,6 @@ function createStateDatabase(codexHome: string, threads: TestThread[]): void {
         thread.updatedAtMs,
         thread.reasoningEffort,
       );
-    }
-  } finally {
-    db.close();
-  }
-}
-
-function createLogsDatabase(codexHome: string, logs: TestTokenLog[]): void {
-  const db = new DatabaseSync(join(codexHome, "logs_2.sqlite"));
-  try {
-    db.exec(`
-      CREATE TABLE logs (
-        thread_id TEXT,
-        ts INTEGER NOT NULL,
-        feedback_log_body TEXT
-      )
-    `);
-
-    const insertLog = db.prepare(`
-      INSERT INTO logs (thread_id, ts, feedback_log_body)
-      VALUES (?, ?, ?)
-    `);
-
-    for (const log of logs) {
-      insertLog.run(log.threadId, log.ts, log.body);
     }
   } finally {
     db.close();
