@@ -43,9 +43,9 @@ export function AppShell() {
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col p-4 pt-0">
+        <main className="container mx-auto grid w-full flex-1 content-start gap-5 p-4">
           <Outlet />
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
