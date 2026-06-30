@@ -25,7 +25,7 @@ export function SessionsPage() {
   }, [filter, sessions]);
 
   return (
-    <section className="grid gap-5 py-4">
+    <>
       <SessionsPageHeader isRefreshing={isRefreshing} onRefresh={refresh} />
 
       <SessionsFilter value={filter} onChange={setFilter} />
@@ -40,6 +40,6 @@ export function SessionsPage() {
           <SessionCard key={session.id} session={session} />
         ))}
       </div>
-    </section>
+    </>
   );
 }

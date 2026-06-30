@@ -19,7 +19,7 @@ export function DashboardPage() {
   const groups = useMemo(() => dashboard?.groups[groupBy] ?? [], [dashboard, groupBy]);
 
   return (
-    <section className="grid gap-5 py-4">
+    <>
       <DashboardPageHeader isRefreshing={isRefreshing} onRefresh={refresh} />
 
       {dashboardQuery.isError ? <DashboardError /> : null}
@@ -39,6 +39,6 @@ export function DashboardPage() {
           <DashboardGroupTable groupBy={groupBy} groups={groups} onGroupByChange={setGroupBy} />
         </>
       ) : null}
-    </section>
+    </>
   );
 }
