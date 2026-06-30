@@ -9,7 +9,7 @@ import type {
   DashboardResponse,
   DashboardTrendPoint,
 } from "@/features/dashboard/model";
-import { m } from "@/locales/paraglide/messages";
+import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
 import {
   ChartContainer,
@@ -26,33 +26,38 @@ type DashboardPageHeaderProps = {
 };
 
 export function DashboardPageHeader({ isRefreshing, onRefresh }: DashboardPageHeaderProps) {
+  const { t } = useRuntimeI18n();
+
   return (
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 className="text-base font-semibold">{m.dashboard_page_title()}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{m.dashboard_page_detail()}</p>
+        <h1 className="text-base font-semibold">{t.dashboard_page_title()}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t.dashboard_page_detail()}</p>
       </div>
       <Button variant="outline" onClick={onRefresh}>
         <RefreshCwIcon data-icon="inline-start" className={cn(isRefreshing && "animate-spin")} />
-        {m.refresh()}
+        {t.refresh()}
       </Button>
     </header>
   );
 }
 
+type RuntimeMessages = ReturnType<typeof useRuntimeI18n>["t"];
+
 export function DashboardSummaryCards({ summary }: { summary: DashboardResponse["summary"] }) {
+  const { t } = useRuntimeI18n();
   const cards = [
-    { label: m.dashboard_total_tokens(), value: formatTokens(summary.totalTokens) },
-    { label: m.dashboard_session_count(), value: formatInteger(summary.sessionCount) },
-    { label: m.dashboard_average_tokens(), value: formatTokens(summary.averageTokensPerSession) },
-    { label: m.dashboard_p90_tokens(), value: formatTokens(summary.p90TokensPerSession) },
-    { label: m.dashboard_peak_session_tokens(), value: formatTokens(summary.peakSessionTokens) },
-    { label: m.dashboard_longest_session(), value: formatDuration(summary.longestSessionMs) },
+    { label: t.dashboard_total_tokens(), value: formatTokens(summary.totalTokens) },
+    { label: t.dashboard_session_count(), value: formatInteger(summary.sessionCount) },
+    { label: t.dashboard_average_tokens(), value: formatTokens(summary.averageTokensPerSession) },
+    { label: t.dashboard_p90_tokens(), value: formatTokens(summary.p90TokensPerSession) },
+    { label: t.dashboard_peak_session_tokens(), value: formatTokens(summary.peakSessionTokens) },
+    { label: t.dashboard_longest_session(), value: formatDuration(summary.longestSessionMs, t) },
     {
-      label: m.dashboard_current_streak(),
-      value: m.dashboard_days_count({ count: summary.currentStreakDays }),
+      label: t.dashboard_current_streak(),
+      value: t.dashboard_days_count({ count: summary.currentStreakDays }),
     },
-    { label: m.dashboard_top_reasoning_effort(), value: summary.mostUsedReasoningEffort },
+    { label: t.dashboard_top_reasoning_effort(), value: summary.mostUsedReasoningEffort },
   ];
 
   return (
@@ -74,14 +79,15 @@ export function DashboardCharts({
   activity: DashboardActivityDay[];
   trend: DashboardTrendPoint[];
 }) {
+  const { t } = useRuntimeI18n();
   const chartConfig = {
     sessions: {
       color: "var(--chart-2)",
-      label: m.dashboard_chart_sessions(),
+      label: t.dashboard_chart_sessions(),
     },
     tokens: {
       color: "var(--chart-1)",
-      label: m.dashboard_chart_tokens(),
+      label: t.dashboard_chart_tokens(),
     },
   } satisfies ChartConfig;
 
@@ -89,8 +95,8 @@ export function DashboardCharts({
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(420px,1fr)]">
       <section className="bg-card rounded-lg border p-4">
         <div className="mb-4">
-          <h2 className="font-medium">{m.dashboard_token_trend()}</h2>
-          <p className="text-muted-foreground mt-1 text-sm">{m.dashboard_token_trend_detail()}</p>
+          <h2 className="font-medium">{t.dashboard_token_trend()}</h2>
+          <p className="text-muted-foreground mt-1 text-sm">{t.dashboard_token_trend_detail()}</p>
         </div>
         <ChartContainer config={chartConfig} className="h-72 w-full">
           <AreaChart data={trend} margin={{ left: 4, right: 12, top: 8 }}>
@@ -136,8 +142,8 @@ export function DashboardCharts({
 
       <section className="bg-card min-w-0 rounded-lg border p-4">
         <div className="mb-4">
-          <h2 className="font-medium">{m.dashboard_activity()}</h2>
-          <p className="text-muted-foreground mt-1 text-sm">{m.dashboard_activity_detail()}</p>
+          <h2 className="font-medium">{t.dashboard_activity()}</h2>
+          <p className="text-muted-foreground mt-1 text-sm">{t.dashboard_activity_detail()}</p>
         </div>
         <div className="overflow-x-auto pb-1">
           <ActivityCalendar
@@ -149,32 +155,32 @@ export function DashboardCharts({
             fontSize={12}
             labels={{
               legend: {
-                less: m.dashboard_calendar_less(),
-                more: m.dashboard_calendar_more(),
+                less: t.dashboard_calendar_less(),
+                more: t.dashboard_calendar_more(),
               },
               months: [
-                m.month_jan(),
-                m.month_feb(),
-                m.month_mar(),
-                m.month_apr(),
-                m.month_may(),
-                m.month_jun(),
-                m.month_jul(),
-                m.month_aug(),
-                m.month_sep(),
-                m.month_oct(),
-                m.month_nov(),
-                m.month_dec(),
+                t.month_jan(),
+                t.month_feb(),
+                t.month_mar(),
+                t.month_apr(),
+                t.month_may(),
+                t.month_jun(),
+                t.month_jul(),
+                t.month_aug(),
+                t.month_sep(),
+                t.month_oct(),
+                t.month_nov(),
+                t.month_dec(),
               ],
               totalCount: "{{year}} · {{count}} Token",
               weekdays: [
-                m.weekday_sun(),
-                m.weekday_mon(),
-                m.weekday_tue(),
-                m.weekday_wed(),
-                m.weekday_thu(),
-                m.weekday_fri(),
-                m.weekday_sat(),
+                t.weekday_sun(),
+                t.weekday_mon(),
+                t.weekday_tue(),
+                t.weekday_wed(),
+                t.weekday_thu(),
+                t.weekday_fri(),
+                t.weekday_sat(),
               ],
             }}
             theme={{
@@ -193,24 +199,26 @@ type DashboardGroupTableProps = {
   onGroupByChange: (value: DashboardGroupBy) => void;
 };
 
-const groupOptions: { label: () => string; value: DashboardGroupBy }[] = [
-  { label: () => m.dashboard_group_provider(), value: "provider" },
-  { label: () => m.dashboard_group_model(), value: "model" },
-  { label: () => m.dashboard_group_project(), value: "project" },
-];
+const groupOptions = [
+  { labelKey: "dashboard_group_provider", value: "provider" },
+  { labelKey: "dashboard_group_model", value: "model" },
+  { labelKey: "dashboard_group_project", value: "project" },
+] as const satisfies { labelKey: keyof RuntimeMessages; value: DashboardGroupBy }[];
 
 export function DashboardGroupTable({
   groupBy,
   groups,
   onGroupByChange,
 }: DashboardGroupTableProps) {
+  const { t } = useRuntimeI18n();
+
   return (
     <section className="bg-card rounded-lg border">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
         <div>
-          <h2 className="font-medium">{m.dashboard_group_analysis()}</h2>
+          <h2 className="font-medium">{t.dashboard_group_analysis()}</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            {m.dashboard_group_analysis_detail()}
+            {t.dashboard_group_analysis_detail()}
           </p>
         </div>
         <div className="inline-flex rounded-lg border p-0.5">
@@ -224,7 +232,7 @@ export function DashboardGroupTable({
                 variant={active ? "secondary" : "ghost"}
                 onClick={() => onGroupByChange(option.value)}
               >
-                {option.label()}
+                {t[option.labelKey]()}
               </Button>
             );
           })}
@@ -235,15 +243,15 @@ export function DashboardGroupTable({
         <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="text-muted-foreground border-b text-left text-xs">
-              <th className="px-4 py-3 font-medium">{getGroupColumnLabel(groupBy)}</th>
-              <th className="px-4 py-3 text-right font-medium">{m.dashboard_total_tokens()}</th>
-              <th className="px-4 py-3 text-right font-medium">{m.dashboard_session_count()}</th>
-              <th className="px-4 py-3 text-right font-medium">{m.dashboard_average_tokens()}</th>
-              <th className="px-4 py-3 text-right font-medium">{m.dashboard_p90_tokens()}</th>
+              <th className="px-4 py-3 font-medium">{getGroupColumnLabel(groupBy, t)}</th>
+              <th className="px-4 py-3 text-right font-medium">{t.dashboard_total_tokens()}</th>
+              <th className="px-4 py-3 text-right font-medium">{t.dashboard_session_count()}</th>
+              <th className="px-4 py-3 text-right font-medium">{t.dashboard_average_tokens()}</th>
+              <th className="px-4 py-3 text-right font-medium">{t.dashboard_p90_tokens()}</th>
               <th className="px-4 py-3 text-right font-medium">
-                {m.dashboard_peak_session_tokens()}
+                {t.dashboard_peak_session_tokens()}
               </th>
-              <th className="px-4 py-3 text-right font-medium">{m.dashboard_active_days()}</th>
+              <th className="px-4 py-3 text-right font-medium">{t.dashboard_active_days()}</th>
             </tr>
           </thead>
           <tbody>
@@ -302,18 +310,22 @@ export function DashboardSkeleton() {
 }
 
 export function DashboardError() {
-  return <p className="text-destructive text-sm">{m.dashboard_load_error()}</p>;
+  const { t } = useRuntimeI18n();
+
+  return <p className="text-destructive text-sm">{t.dashboard_load_error()}</p>;
 }
 
 export function DashboardEmpty() {
-  return <p className="text-muted-foreground text-sm">{m.dashboard_empty()}</p>;
+  const { t } = useRuntimeI18n();
+
+  return <p className="text-muted-foreground text-sm">{t.dashboard_empty()}</p>;
 }
 
-function getGroupColumnLabel(groupBy: DashboardGroupBy): string {
-  if (groupBy === "provider") return m.dashboard_group_provider();
-  if (groupBy === "model") return m.dashboard_group_model();
+function getGroupColumnLabel(groupBy: DashboardGroupBy, t: RuntimeMessages): string {
+  if (groupBy === "provider") return t.dashboard_group_provider();
+  if (groupBy === "model") return t.dashboard_group_model();
 
-  return m.dashboard_group_project();
+  return t.dashboard_group_project();
 }
 
 function formatInteger(value: number): string {
@@ -327,16 +339,16 @@ function formatTokens(value: number): string {
   }).format(value);
 }
 
-function formatDuration(durationMs: number): string {
+function formatDuration(durationMs: number, t: RuntimeMessages): string {
   const minutes = Math.floor(durationMs / 60_000);
   const days = Math.floor(minutes / 1_440);
   const hours = Math.floor((minutes % 1_440) / 60);
   const remainingMinutes = minutes % 60;
 
-  if (days > 0) return m.dashboard_duration_days({ days, hours, minutes: remainingMinutes });
-  if (hours > 0) return m.dashboard_duration_hours({ hours, minutes: remainingMinutes });
+  if (days > 0) return t.dashboard_duration_days({ days, hours, minutes: remainingMinutes });
+  if (hours > 0) return t.dashboard_duration_hours({ hours, minutes: remainingMinutes });
 
-  return m.dashboard_duration_minutes({ minutes: remainingMinutes });
+  return t.dashboard_duration_minutes({ minutes: remainingMinutes });
 }
 
 function formatShortDate(date: string): string {

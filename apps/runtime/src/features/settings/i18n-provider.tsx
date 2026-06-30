@@ -1,38 +1,55 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, use, useCallback, useEffect, useMemo, type ReactNode } from "react";
 
+import { m } from "@/locales/paraglide/messages";
+import {
+  overwriteGetLocale,
+  overwriteSetLocale,
+  setLocale as setParaglideLocale,
+} from "@/locales/paraglide/runtime";
+
 import { patchSettings, readSettings } from "./client";
+import { SETTINGS_QUERY_KEY } from "./client-provider";
 import {
   createDefaultRuntimeSettings,
+  normalizeLocale,
   normalizeRuntimeSettingsPatch,
-  normalizeTheme,
+  type RuntimeLocale,
   type RuntimeSettings,
   type RuntimeSettingsPatch,
-  type ThemeMode,
 } from "./model";
 
-type RuntimeThemePreferenceContextValue = {
-  theme: ThemeMode;
-  setTheme: (theme: ThemeMode) => void;
+type RuntimeI18nContextValue = {
+  locale: RuntimeLocale;
+  setLocalePreference: (locale: RuntimeLocale) => void;
+  t: typeof m;
 };
 
-const RuntimeThemePreferenceContext = createContext<RuntimeThemePreferenceContextValue | null>(
-  null,
-);
-export const SETTINGS_QUERY_KEY = ["settings"] as const;
+const RuntimeI18nContext = createContext<RuntimeI18nContextValue | null>(null);
+let runtimeLocalePreference = createDefaultRuntimeSettings().locale;
 
-type RuntimeSettingsProviderProps = {
+overwriteGetLocale(() => runtimeLocalePreference);
+overwriteSetLocale((nextLocale) => {
+  runtimeLocalePreference = normalizeLocale(nextLocale);
+});
+
+type RuntimeI18nProviderProps = {
   children: ReactNode;
 };
 
-export function RuntimeSettingsProvider({ children }: RuntimeSettingsProviderProps) {
+export function RuntimeI18nProvider({ children }: RuntimeI18nProviderProps) {
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({
     initialData: createDefaultRuntimeSettings,
     queryFn: readSettings,
     queryKey: SETTINGS_QUERY_KEY,
   });
-  const settings = settingsQuery.data;
+  const locale = settingsQuery.data.locale;
+  runtimeLocalePreference = locale;
+
+  useEffect(() => {
+    void setParaglideLocale(locale, { reload: false });
+  }, [locale]);
 
   useEffect(() => {
     if (settingsQuery.isError) {
@@ -59,35 +76,30 @@ export function RuntimeSettingsProvider({ children }: RuntimeSettingsProviderPro
     },
   });
 
-  const setTheme = useCallback(
-    (nextTheme: ThemeMode) => {
-      const theme = normalizeTheme(nextTheme);
-
-      mutateSettings({ theme });
+  const setLocalePreference = useCallback(
+    (nextLocale: RuntimeLocale) => {
+      mutateSettings({ locale: normalizeLocale(nextLocale) });
     },
     [mutateSettings],
   );
 
-  const themePreferenceContextValue = useMemo<RuntimeThemePreferenceContextValue>(
+  const contextValue = useMemo<RuntimeI18nContextValue>(
     () => ({
-      theme: settings.theme,
-      setTheme,
+      locale,
+      setLocalePreference,
+      t: m,
     }),
-    [settings.theme, setTheme],
+    [locale, setLocalePreference],
   );
 
-  return (
-    <RuntimeThemePreferenceContext.Provider value={themePreferenceContextValue}>
-      {children}
-    </RuntimeThemePreferenceContext.Provider>
-  );
+  return <RuntimeI18nContext.Provider value={contextValue}>{children}</RuntimeI18nContext.Provider>;
 }
 
-export function useRuntimeThemePreference() {
-  const context = use(RuntimeThemePreferenceContext);
+export function useRuntimeI18n() {
+  const context = use(RuntimeI18nContext);
 
   if (!context) {
-    throw new Error("useRuntimeThemePreference must be used within RuntimeSettingsProvider");
+    throw new Error("useRuntimeI18n must be used within RuntimeI18nProvider");
   }
 
   return context;

@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 
-import { useRuntimeLocale } from "@/features/settings/client-provider";
+import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { resolveLocaleDirection } from "@/features/settings/model";
 import { DirectionProvider } from "@/ui/components/direction";
 
@@ -9,7 +9,7 @@ type DirectionStateProviderProps = {
 };
 
 export function DirectionStateProvider({ children }: DirectionStateProviderProps) {
-  const { locale } = useRuntimeLocale();
+  const { locale } = useRuntimeI18n();
   const direction = resolveLocaleDirection(locale);
 
   useEffect(() => {

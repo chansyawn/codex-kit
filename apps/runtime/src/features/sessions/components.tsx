@@ -2,7 +2,7 @@ import { RefreshCwIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { SessionSummary } from "@/features/sessions/model";
-import { m } from "@/locales/paraglide/messages";
+import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
 import { Skeleton } from "@/ui/components/skeleton";
 import { cn } from "@/ui/lib/utils";
@@ -15,15 +15,17 @@ type SessionsPageHeaderProps = {
 };
 
 export function SessionsPageHeader({ isRefreshing, onRefresh }: SessionsPageHeaderProps) {
+  const { t } = useRuntimeI18n();
+
   return (
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 className="text-base font-semibold">{m.sessions_page_title()}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{m.sessions_page_detail()}</p>
+        <h1 className="text-base font-semibold">{t.sessions_page_title()}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t.sessions_page_detail()}</p>
       </div>
       <Button variant="outline" onClick={onRefresh}>
         <RefreshCwIcon data-icon="inline-start" className={cn(isRefreshing && "animate-spin")} />
-        {m.refresh()}
+        {t.refresh()}
       </Button>
     </header>
   );
@@ -34,13 +36,17 @@ type SessionsFilterProps = {
   value: SessionsFilterValue;
 };
 
-const FILTER_OPTIONS: { label: () => string; value: SessionsFilterValue }[] = [
-  { label: () => m.sessions_filter_all(), value: "all" },
-  { label: () => m.sessions_filter_active(), value: "active" },
-  { label: () => m.sessions_filter_archived(), value: "archived" },
-];
+const FILTER_OPTIONS = [
+  { labelKey: "sessions_filter_all", value: "all" },
+  { labelKey: "sessions_filter_active", value: "active" },
+  { labelKey: "sessions_filter_archived", value: "archived" },
+] as const satisfies { labelKey: keyof RuntimeMessages; value: SessionsFilterValue }[];
+
+type RuntimeMessages = ReturnType<typeof useRuntimeI18n>["t"];
 
 export function SessionsFilter({ onChange, value }: SessionsFilterProps) {
+  const { t } = useRuntimeI18n();
+
   return (
     <div className="inline-flex rounded-lg border p-0.5">
       {FILTER_OPTIONS.map((option) => {
@@ -52,7 +58,7 @@ export function SessionsFilter({ onChange, value }: SessionsFilterProps) {
             variant={active ? "secondary" : "ghost"}
             onClick={() => onChange(option.value)}
           >
-            {option.label()}
+            {t[option.labelKey]()}
           </Button>
         );
       })}
@@ -73,9 +79,10 @@ type SessionCardProps = {
 };
 
 export function SessionCard({ session }: SessionCardProps) {
+  const { t } = useRuntimeI18n();
   const metaSegments = [
     session.model ? `${session.model}·${session.modelProvider}` : session.modelProvider,
-    session.tokensUsed > 0 ? `${formatTokens(session.tokensUsed)} ${m.session_tokens_label()}` : "",
+    session.tokensUsed > 0 ? `${formatTokens(session.tokensUsed)} ${t.session_tokens_label()}` : "",
     formatActivity(session.lastActivityAt),
   ].filter(Boolean);
 
@@ -89,7 +96,7 @@ export function SessionCard({ session }: SessionCardProps) {
             session.archived ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary",
           )}
         >
-          {session.archived ? m.session_status_archived() : m.session_status_active()}
+          {session.archived ? t.session_status_archived() : t.session_status_active()}
         </span>
       </div>
       <p className="text-muted-foreground mt-1 text-sm break-all">{session.cwd}</p>
