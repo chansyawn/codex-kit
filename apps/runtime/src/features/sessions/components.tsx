@@ -5,6 +5,7 @@ import type { SessionSummary } from "@/features/sessions/model";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
 import { Skeleton } from "@/ui/components/skeleton";
+import { formatCompactNumber } from "@/ui/lib/number-format";
 import { cn } from "@/ui/lib/utils";
 
 export type SessionsFilterValue = "all" | "active" | "archived";
@@ -66,10 +67,6 @@ export function SessionsFilter({ onChange, value }: SessionsFilterProps) {
   );
 }
 
-function formatTokens(tokens: number): string {
-  return new Intl.NumberFormat(undefined, { notation: "compact" }).format(tokens);
-}
-
 function formatActivity(iso: string): string {
   return iso ? new Date(iso).toLocaleString() : "—";
 }
@@ -79,10 +76,12 @@ type SessionCardProps = {
 };
 
 export function SessionCard({ session }: SessionCardProps) {
-  const { t } = useRuntimeI18n();
+  const { locale, t } = useRuntimeI18n();
   const metaSegments = [
     session.model ? `${session.model}·${session.modelProvider}` : session.modelProvider,
-    session.tokensUsed > 0 ? `${formatTokens(session.tokensUsed)} ${t.session_tokens_label()}` : "",
+    session.tokensUsed > 0
+      ? `${formatCompactNumber(session.tokensUsed, locale)} ${t.session_tokens_label()}`
+      : "",
     formatActivity(session.lastActivityAt),
   ].filter(Boolean);
 
