@@ -9,6 +9,7 @@ import type {
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
 import { Skeleton } from "@/ui/components/skeleton";
+import { formatCompactNumber, formatIntegerNumber } from "@/ui/lib/number-format";
 import { cn } from "@/ui/lib/utils";
 
 type DashboardPageHeaderProps = {
@@ -71,13 +72,25 @@ export function DashboardRangeFilter({ onChange, value }: DashboardRangeFilterPr
 }
 
 export function DashboardSummaryCards({ summary }: { summary: DashboardResponse["summary"] }) {
-  const { t } = useRuntimeI18n();
+  const { locale, t } = useRuntimeI18n();
   const cards = [
-    { label: t.dashboard_total_tokens(), value: formatTokens(summary.totalTokens) },
-    { label: t.dashboard_session_count(), value: formatInteger(summary.sessionCount) },
-    { label: t.dashboard_average_tokens(), value: formatTokens(summary.averageTokensPerSession) },
-    { label: t.dashboard_p90_tokens(), value: formatTokens(summary.p90TokensPerSession) },
-    { label: t.dashboard_peak_session_tokens(), value: formatTokens(summary.peakSessionTokens) },
+    { label: t.dashboard_total_tokens(), value: formatCompactNumber(summary.totalTokens, locale) },
+    {
+      label: t.dashboard_session_count(),
+      value: formatIntegerNumber(summary.sessionCount, locale),
+    },
+    {
+      label: t.dashboard_average_tokens(),
+      value: formatCompactNumber(summary.averageTokensPerSession, locale),
+    },
+    {
+      label: t.dashboard_p90_tokens(),
+      value: formatCompactNumber(summary.p90TokensPerSession, locale),
+    },
+    {
+      label: t.dashboard_peak_session_tokens(),
+      value: formatCompactNumber(summary.peakSessionTokens, locale),
+    },
     { label: t.dashboard_longest_session(), value: formatDuration(summary.longestSessionMs, t) },
     {
       label: t.dashboard_current_streak(),
@@ -115,7 +128,7 @@ export function DashboardGroupTable({
   groups,
   onGroupByChange,
 }: DashboardGroupTableProps) {
-  const { t } = useRuntimeI18n();
+  const { locale, t } = useRuntimeI18n();
 
   return (
     <section className="bg-card rounded-lg border">
@@ -168,22 +181,22 @@ export function DashboardGroupTable({
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums">
-                  {formatTokens(group.totalTokens)}
+                  {formatCompactNumber(group.totalTokens, locale)}
                 </td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums">
-                  {formatInteger(group.sessionCount)}
+                  {formatIntegerNumber(group.sessionCount, locale)}
                 </td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums">
-                  {formatTokens(group.averageTokensPerSession)}
+                  {formatCompactNumber(group.averageTokensPerSession, locale)}
                 </td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums">
-                  {formatTokens(group.p90TokensPerSession)}
+                  {formatCompactNumber(group.p90TokensPerSession, locale)}
                 </td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums">
-                  {formatTokens(group.peakSessionTokens)}
+                  {formatCompactNumber(group.peakSessionTokens, locale)}
                 </td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums">
-                  {formatInteger(group.activeDays)}
+                  {formatIntegerNumber(group.activeDays, locale)}
                 </td>
               </tr>
             ))}
@@ -227,17 +240,6 @@ function getGroupColumnLabel(groupBy: DashboardGroupBy, t: RuntimeMessages): str
   if (groupBy === "model") return t.dashboard_group_model();
 
   return t.dashboard_group_project();
-}
-
-function formatInteger(value: number): string {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
-}
-
-function formatTokens(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: 1,
-    notation: "compact",
-  }).format(value);
 }
 
 function formatDuration(durationMs: number, t: RuntimeMessages): string {
