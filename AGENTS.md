@@ -4,6 +4,12 @@
 
 - Use `vp` as the only project toolchain entrypoint.
 
+## Runtime i18n
+
+- UI copy must use `useRuntimeI18n().t`.
+- Do not import `m` from `@/locales/paraglide/messages` in components or navigation config.
+- Keep locale state and switching in `apps/runtime/src/features/settings/i18n-provider.tsx`; do not set the Paraglide runtime locale elsewhere.
+
 ## Architecture
 
 CodexKit is a Codex plugin plus a local dashboard runtime.
