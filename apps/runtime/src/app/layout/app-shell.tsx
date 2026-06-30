@@ -1,7 +1,8 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { AppSidebar } from "@/app/layout/app-sidebar";
-import { isRuntimePath, routeLabels } from "@/app/layout/navigation";
+import { isRuntimePath, routeLabelKeys } from "@/app/layout/navigation";
+import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,10 +15,12 @@ import { Separator } from "@/ui/components/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/ui/components/sidebar";
 
 export function AppShell() {
+  const { t } = useRuntimeI18n();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const activePath = isRuntimePath(pathname) ? pathname : "/";
+  const activeLabel = t[routeLabelKeys[activePath]]();
 
   return (
     <SidebarProvider>
@@ -34,7 +37,7 @@ export function AppShell() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>{routeLabels[activePath]()}</BreadcrumbPage>
+                  <BreadcrumbPage>{activeLabel}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

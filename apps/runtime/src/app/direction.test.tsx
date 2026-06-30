@@ -8,10 +8,11 @@ const mockedRuntimeLocale = vi.hoisted(() => ({
   current: "en" as RuntimeLocale,
 }));
 
-vi.mock("@/features/settings/client-provider", () => ({
-  useRuntimeLocale: () => ({
+vi.mock("@/features/settings/i18n-provider", () => ({
+  useRuntimeI18n: () => ({
     locale: mockedRuntimeLocale.current,
     setLocalePreference: vi.fn(),
+    t: {},
   }),
 }));
 
