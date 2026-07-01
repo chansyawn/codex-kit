@@ -1,7 +1,7 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { AppSidebar } from "@/app/layout/app-sidebar";
-import { isRuntimePath, routeLabelKeys } from "@/app/layout/navigation";
+import { getActiveRuntimePath, routeLabelKeys } from "@/app/layout/navigation";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import {
   Breadcrumb,
@@ -19,7 +19,7 @@ export function AppShell() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const activePath = isRuntimePath(pathname) ? pathname : "/";
+  const activePath = getActiveRuntimePath(pathname);
   const activeLabel = t[routeLabelKeys[activePath]]();
 
   return (

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { RefreshCwIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -86,7 +87,11 @@ export function SessionCard({ session }: SessionCardProps) {
   ].filter(Boolean);
 
   return (
-    <article className="bg-card rounded-lg border p-4">
+    <Link
+      to="/sessions/$sessionId"
+      params={{ sessionId: session.id }}
+      className="bg-card hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-ring/50 block rounded-lg border p-4 transition-colors outline-none focus-visible:ring-3"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h2 className="min-w-0 font-medium break-all">{session.title}</h2>
         <span
@@ -103,7 +108,7 @@ export function SessionCard({ session }: SessionCardProps) {
         <p className="text-muted-foreground mt-2 line-clamp-1 text-sm">{session.preview}</p>
       ) : null}
       <p className="text-muted-foreground mt-3 text-xs">{metaSegments.join(" · ")}</p>
-    </article>
+    </Link>
   );
 }
 
