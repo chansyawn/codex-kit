@@ -53,3 +53,9 @@ export const mainNavItems: MainNavItem[] = [
 export function isRuntimePath(pathname: string): pathname is RuntimePath {
   return pathname in routeLabelKeys;
 }
+
+export function getActiveRuntimePath(pathname: string): RuntimePath {
+  if (isRuntimePath(pathname)) return pathname;
+  if (pathname.startsWith("/sessions/")) return "/sessions";
+  return "/";
+}
