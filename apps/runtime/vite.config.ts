@@ -43,6 +43,9 @@ export default defineConfig(({ mode }: ConfigEnv) => {
 
   return {
     ...commonConfig,
+    server: {
+      port: 31542,
+    },
     build: {
       outDir: "dist/client",
     },
