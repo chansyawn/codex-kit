@@ -14,11 +14,16 @@ import {
   SessionCard,
 } from "@/features/sessions/components";
 import type { SessionListQuery } from "@/features/sessions/model";
-import { useSessionsData } from "@/features/sessions/use-sessions-data";
+import { useSessionFiltersData, useSessionsData } from "@/features/sessions/use-sessions-data";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 20;
+const EMPTY_FILTERS = {
+  archived: [],
+  projects: [],
+  providers: [],
+};
 
 export function SessionsPage() {
   const { t } = useRuntimeI18n();
@@ -40,8 +45,9 @@ export function SessionsPage() {
     [archived, page, projects, providers, title],
   );
   const { isRefreshing, refresh, sessionsQuery } = useSessionsData(query);
+  const { sessionFiltersQuery } = useSessionFiltersData();
   const sessionsResponse = sessionsQuery.data;
-  const filters = sessionsResponse?.filters ?? { archived: [], projects: [], providers: [] };
+  const filters = sessionFiltersQuery.data ?? EMPTY_FILTERS;
   const pageInfo = sessionsResponse?.pageInfo ?? {
     page: DEFAULT_PAGE,
     perPage: DEFAULT_PER_PAGE,
@@ -127,6 +133,8 @@ export function SessionsPage() {
         <SessionsFilterSidebar
           archived={archived}
           filters={filters}
+          isError={sessionFiltersQuery.isError}
+          isLoading={sessionFiltersQuery.isLoading}
           projects={projects}
           providers={providers}
           onArchivedChange={updateArchived}

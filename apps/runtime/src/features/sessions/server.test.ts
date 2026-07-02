@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { listSessions, normalizeSessionListQuery } from "./server";
+import { listSessionFilters, listSessions, normalizeSessionListQuery } from "./server";
 
 describe("sessions list", () => {
   it("returns an empty paginated response when the state database does not exist", async () => {
@@ -13,14 +13,6 @@ describe("sessions list", () => {
 
     await expect(listSessions({ codexHome })).resolves.toMatchObject({
       data: [],
-      filters: {
-        archived: [
-          { count: 0, value: false },
-          { count: 0, value: true },
-        ],
-        projects: [],
-        providers: [],
-      },
       pageInfo: {
         page: 1,
         perPage: 20,
@@ -28,6 +20,15 @@ describe("sessions list", () => {
         totalPages: 0,
       },
     });
+  });
+
+  it("does not include filters in the paginated list response", async () => {
+    const codexHome = await createTempCodexHome();
+    createStateDatabase(codexHome, [createThread({ id: "thread-a" })]);
+
+    const response = await listSessions({ codexHome });
+
+    expect("filters" in response).toBe(false);
   });
 
   it("returns the first page with the default page size and stable recency ordering", async () => {
@@ -123,7 +124,20 @@ describe("sessions list", () => {
     });
   });
 
-  it("builds filter counts from title matches while excluding the current facet kind", async () => {
+  it("returns stable empty filters when the state database does not exist", async () => {
+    const codexHome = await createTempCodexHome();
+
+    await expect(listSessionFilters({ codexHome })).resolves.toEqual({
+      archived: [
+        { count: 0, label: "Active", value: false },
+        { count: 0, label: "Archived", value: true },
+      ],
+      projects: [],
+      providers: [],
+    });
+  });
+
+  it("builds global filter counts independent of list query filters", async () => {
     const codexHome = await createTempCodexHome();
     createStateDatabase(codexHome, [
       createThread({
@@ -159,7 +173,7 @@ describe("sessions list", () => {
       }),
     ]);
 
-    const response = await listSessions({
+    const listResponse = await listSessions({
       codexHome,
       query: {
         archived: false,
@@ -168,20 +182,36 @@ describe("sessions list", () => {
         title: "Build",
       },
     });
+    const filters = await listSessionFilters({ codexHome });
 
-    expect(response.data.map((session) => session.id)).toEqual(["alpha-openai"]);
-    expect(response.filters.projects).toMatchObject([
-      { count: 1, value: "/workspace/alpha" },
+    expect(listResponse.data.map((session) => session.id)).toEqual(["alpha-openai"]);
+    expect(filters.projects).toMatchObject([
+      { count: 4, label: "alpha", value: "/workspace/alpha" },
       { count: 1, value: "/workspace/beta" },
     ]);
-    expect(response.filters.providers).toMatchObject([
+    expect(filters.providers).toMatchObject([
+      { count: 4, value: "openai" },
       { count: 1, value: "anthropic" },
-      { count: 1, value: "openai" },
     ]);
-    expect(response.filters.archived).toMatchObject([
-      { count: 1, value: false },
+    expect(filters.archived).toMatchObject([
+      { count: 4, value: false },
       { count: 1, value: true },
     ]);
+  });
+
+  it("sorts project and provider filters by count then label", async () => {
+    const codexHome = await createTempCodexHome();
+    createStateDatabase(codexHome, [
+      createThread({ cwd: "/workspace/beta", id: "beta-1", modelProvider: "openai" }),
+      createThread({ cwd: "/workspace/alpha", id: "alpha-1", modelProvider: "anthropic" }),
+      createThread({ cwd: "/workspace/alpha", id: "alpha-2", modelProvider: "zed" }),
+      createThread({ cwd: "/workspace/gamma", id: "gamma-1", modelProvider: "anthropic" }),
+    ]);
+
+    const filters = await listSessionFilters({ codexHome });
+
+    expect(filters.projects.map((filter) => filter.label)).toEqual(["alpha", "beta", "gamma"]);
+    expect(filters.providers.map((filter) => filter.value)).toEqual(["anthropic", "openai", "zed"]);
   });
 });
 

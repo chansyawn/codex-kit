@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 
 import { normalizeDashboardRange, readDashboard } from "@/features/dashboard/server";
-import { listSessions } from "@/features/sessions/server";
+import { listSessionFilters, listSessions } from "@/features/sessions/server";
 import { normalizeRuntimeSettingsPatch } from "@/features/settings/model";
 import { createRuntimeSettingsStore } from "@/features/settings/server-store";
 
@@ -29,6 +29,9 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
           range: normalizeDashboardRange(context.req.query("range")),
         }),
       ),
+    )
+    .get("/sessions/filters", async (context) =>
+      context.json(await listSessionFilters({ codexHome: options.codexHome })),
     )
     .get("/sessions", async (context) =>
       context.json(

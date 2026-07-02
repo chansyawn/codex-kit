@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import type {
   SessionFilterOption,
+  SessionsFiltersResponse,
   SessionsResponse,
   SessionSummary,
 } from "@/features/sessions/model";
@@ -53,7 +54,9 @@ export function SessionsPageHeader({ isRefreshing, onRefresh }: SessionsPageHead
 
 type SessionsFilterSidebarProps = {
   archived: boolean | undefined;
-  filters: SessionsResponse["filters"];
+  filters: SessionsFiltersResponse;
+  isError: boolean;
+  isLoading: boolean;
   onArchivedChange: (archived: boolean) => void;
   onProjectToggle: (project: string) => void;
   onProviderToggle: (provider: string) => void;
@@ -64,6 +67,8 @@ type SessionsFilterSidebarProps = {
 export function SessionsFilterSidebar({
   archived,
   filters,
+  isError,
+  isLoading,
   onArchivedChange,
   onProjectToggle,
   onProviderToggle,
@@ -74,51 +79,71 @@ export function SessionsFilterSidebar({
 
   return (
     <aside className="grid content-start gap-4 lg:w-64 lg:shrink-0">
-      <FilterGroup title={t.sessions_filter_project()}>
-        {filters.projects.length === 0 ? (
-          <FilterEmpty>{t.sessions_filter_empty()}</FilterEmpty>
-        ) : (
-          filters.projects.map((filter) => (
-            <FilterOptionButton
-              key={filter.value}
-              active={projects.includes(filter.value)}
-              count={filter.count}
-              label={filter.label}
-              title={filter.value}
-              onClick={() => onProjectToggle(filter.value)}
-            />
-          ))
-        )}
-      </FilterGroup>
+      {isError ? <p className="text-destructive text-sm">{t.sessions_load_error()}</p> : null}
+      {isLoading ? <SessionsFilterSkeleton /> : null}
+      {!isLoading ? (
+        <>
+          <FilterGroup title={t.sessions_filter_project()}>
+            {filters.projects.length === 0 ? (
+              <FilterEmpty>{t.sessions_filter_empty()}</FilterEmpty>
+            ) : (
+              filters.projects.map((filter) => (
+                <FilterOptionButton
+                  key={filter.value}
+                  active={projects.includes(filter.value)}
+                  count={filter.count}
+                  label={filter.label}
+                  title={filter.value}
+                  onClick={() => onProjectToggle(filter.value)}
+                />
+              ))
+            )}
+          </FilterGroup>
 
-      <FilterGroup title={t.sessions_filter_provider()}>
-        {filters.providers.length === 0 ? (
-          <FilterEmpty>{t.sessions_filter_empty()}</FilterEmpty>
-        ) : (
-          filters.providers.map((filter) => (
-            <FilterOptionButton
-              key={filter.value}
-              active={providers.includes(filter.value)}
-              count={filter.count}
-              label={filter.label}
-              onClick={() => onProviderToggle(filter.value)}
-            />
-          ))
-        )}
-      </FilterGroup>
+          <FilterGroup title={t.sessions_filter_provider()}>
+            {filters.providers.length === 0 ? (
+              <FilterEmpty>{t.sessions_filter_empty()}</FilterEmpty>
+            ) : (
+              filters.providers.map((filter) => (
+                <FilterOptionButton
+                  key={filter.value}
+                  active={providers.includes(filter.value)}
+                  count={filter.count}
+                  label={filter.label}
+                  onClick={() => onProviderToggle(filter.value)}
+                />
+              ))
+            )}
+          </FilterGroup>
 
-      <FilterGroup title={t.sessions_filter_archived_state()}>
-        {filters.archived.map((filter) => (
-          <FilterOptionButton
-            key={String(filter.value)}
-            active={archived === filter.value}
-            count={filter.count}
-            label={filter.value ? t.session_status_archived() : t.session_status_active()}
-            onClick={() => onArchivedChange(filter.value)}
-          />
-        ))}
-      </FilterGroup>
+          <FilterGroup title={t.sessions_filter_archived_state()}>
+            {filters.archived.map((filter) => (
+              <FilterOptionButton
+                key={String(filter.value)}
+                active={archived === filter.value}
+                count={filter.count}
+                label={filter.value ? t.session_status_archived() : t.session_status_active()}
+                onClick={() => onArchivedChange(filter.value)}
+              />
+            ))}
+          </FilterGroup>
+        </>
+      ) : null}
     </aside>
+  );
+}
+
+function SessionsFilterSkeleton() {
+  return (
+    <div className="grid gap-4">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div key={index} className="grid gap-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-7 w-full" />
+          <Skeleton className="h-7 w-4/5" />
+        </div>
+      ))}
+    </div>
   );
 }
 

@@ -41,15 +41,16 @@ export type SessionSummary = {
 
 export type SessionsResponse = {
   data: SessionSummary[];
-  filters: {
-    archived: SessionFilterOption<boolean>[];
-    projects: SessionFilterOption[];
-    providers: SessionFilterOption[];
-  };
   pageInfo: {
     page: number;
     perPage: number;
     total: number;
     totalPages: number;
   };
+};
+
+export type SessionsFiltersResponse = {
+  archived: SessionFilterOption<boolean>[];
+  projects: SessionFilterOption[];
+  providers: SessionFilterOption[];
 };

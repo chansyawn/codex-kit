@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { readSessions, type ReadSessionsQuery } from "@/features/sessions/client";
+import {
+  readSessionFilters,
+  readSessions,
+  type ReadSessionsQuery,
+} from "@/features/sessions/client";
 
 export function useSessionsData(query: ReadSessionsQuery) {
   const sessionsQuery = useQuery({
@@ -14,5 +18,16 @@ export function useSessionsData(query: ReadSessionsQuery) {
       void sessionsQuery.refetch();
     },
     sessionsQuery,
+  };
+}
+
+export function useSessionFiltersData() {
+  const sessionFiltersQuery = useQuery({
+    queryFn: readSessionFilters,
+    queryKey: ["session-filters"],
+  });
+
+  return {
+    sessionFiltersQuery,
   };
 }

@@ -6,6 +6,7 @@ import type {
   SessionFilterOption,
   SessionListQuery,
   SessionListQueryInput,
+  SessionsFiltersResponse,
   SessionsResponse,
   SessionSummary,
 } from "./model";
@@ -32,11 +33,23 @@ type ThreadRow = {
   updated_at_ms: number | null;
 };
 
-type FacetKind = "archived" | "project" | "provider";
+type SessionFilterRow = {
+  archived: number;
+  cwd: string;
+  model_provider: string;
+};
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 100;
+const EMPTY_FILTERS: SessionsFiltersResponse = {
+  archived: [
+    { count: 0, label: "Active", value: false },
+    { count: 0, label: "Archived", value: true },
+  ],
+  projects: [],
+  providers: [],
+};
 
 function toIso(ms: number | null): string {
   return ms === null ? "" : new Date(ms).toISOString();
@@ -93,6 +106,29 @@ export async function listSessions(options: ListSessionsOptions): Promise<Sessio
   }
 }
 
+export async function listSessionFilters(options: {
+  codexHome: string;
+}): Promise<SessionsFiltersResponse> {
+  const dbPath = `${options.codexHome}/state_5.sqlite`;
+  if (!existsSync(dbPath)) return EMPTY_FILTERS;
+
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    const rows = db
+      .prepare(
+        `SELECT cwd, model_provider, archived
+         FROM threads`,
+      )
+      .all() as SessionFilterRow[];
+
+    return createSessionFiltersResponse(rows);
+  } catch {
+    return EMPTY_FILTERS;
+  } finally {
+    db.close();
+  }
+}
+
 function readSessionRows(db: DatabaseSync, title: string): ThreadRow[] {
   const titlePattern = `%${escapeLikePattern(title).toLowerCase()}%`;
 
@@ -120,17 +156,40 @@ function createSessionsResponse(
 
   return {
     data: filteredSessions.slice(start, start + query.perPage),
-    filters: {
-      archived: createArchivedFilters(titleMatchedSessions, query),
-      projects: createTextFilters(titleMatchedSessions, query, "project"),
-      providers: createTextFilters(titleMatchedSessions, query, "provider"),
-    },
     pageInfo: {
       page,
       perPage: query.perPage,
       total,
       totalPages,
     },
+  };
+}
+
+function createSessionFiltersResponse(rows: SessionFilterRow[]): SessionsFiltersResponse {
+  const archivedCounts = new Map<boolean, number>([
+    [false, 0],
+    [true, 0],
+  ]);
+  const projectCounts = new Map<string, number>();
+  const providerCounts = new Map<string, number>();
+
+  for (const row of rows) {
+    const archived = row.archived === 1;
+    archivedCounts.set(archived, (archivedCounts.get(archived) ?? 0) + 1);
+
+    if (row.cwd) projectCounts.set(row.cwd, (projectCounts.get(row.cwd) ?? 0) + 1);
+    if (row.model_provider) {
+      providerCounts.set(row.model_provider, (providerCounts.get(row.model_provider) ?? 0) + 1);
+    }
+  }
+
+  return {
+    archived: [
+      { count: archivedCounts.get(false) ?? 0, label: "Active", value: false },
+      { count: archivedCounts.get(true) ?? 0, label: "Archived", value: true },
+    ],
+    projects: createTextFilters(projectCounts, "project"),
+    providers: createTextFilters(providerCounts, "provider"),
   };
 }
 
@@ -144,20 +203,9 @@ function filterSessions(sessions: SessionSummary[], query: SessionListQuery): Se
 }
 
 function createTextFilters(
-  sessions: SessionSummary[],
-  query: SessionListQuery,
-  kind: Extract<FacetKind, "project" | "provider">,
+  counts: Map<string, number>,
+  kind: "project" | "provider",
 ): SessionFilterOption[] {
-  const counts = new Map<string, number>();
-  const scopedSessions = sessions.filter((session) => matchesOtherFilters(session, query, kind));
-
-  for (const session of scopedSessions) {
-    const value = kind === "project" ? session.cwd : session.modelProvider;
-    if (!value) continue;
-
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  }
-
   return [...counts.entries()]
     .map(([value, count]) => ({
       count,
@@ -165,40 +213,6 @@ function createTextFilters(
       value,
     }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-}
-
-function createArchivedFilters(
-  sessions: SessionSummary[],
-  query: SessionListQuery,
-): SessionFilterOption<boolean>[] {
-  const counts = new Map<boolean, number>([
-    [false, 0],
-    [true, 0],
-  ]);
-  const scopedSessions = sessions.filter((session) =>
-    matchesOtherFilters(session, query, "archived"),
-  );
-
-  for (const session of scopedSessions) {
-    counts.set(session.archived, (counts.get(session.archived) ?? 0) + 1);
-  }
-
-  return [
-    { count: counts.get(false) ?? 0, label: "Active", value: false },
-    { count: counts.get(true) ?? 0, label: "Archived", value: true },
-  ];
-}
-
-function matchesOtherFilters(
-  session: SessionSummary,
-  query: SessionListQuery,
-  excludedKind: FacetKind,
-): boolean {
-  return (
-    (excludedKind === "project" || matchesProject(session, query.project)) &&
-    (excludedKind === "provider" || matchesProvider(session, query.provider)) &&
-    (excludedKind === "archived" || matchesArchived(session, query.archived))
-  );
 }
 
 function matchesProject(session: SessionSummary, projects: string[]): boolean {

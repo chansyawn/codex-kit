@@ -4,6 +4,7 @@ import { readRuntimeApiJson, runtimeApiClient } from "@/app/clients";
 import type { SessionListQuery } from "@/features/sessions/model";
 
 type SessionsResponse = InferResponseType<typeof runtimeApiClient.sessions.$get>;
+type SessionsFiltersResponse = InferResponseType<typeof runtimeApiClient.sessions.filters.$get>;
 
 export type ReadSessionsQuery = Pick<
   SessionListQuery,
@@ -16,6 +17,10 @@ export function readSessions(query: ReadSessionsQuery): Promise<SessionsResponse
       query: createSessionsQueryParams(query),
     }),
   );
+}
+
+export function readSessionFilters(): Promise<SessionsFiltersResponse> {
+  return readRuntimeApiJson<SessionsFiltersResponse>(runtimeApiClient.sessions.filters.$get());
 }
 
 function createSessionsQueryParams(query: ReadSessionsQuery) {
