@@ -1,3 +1,27 @@
+export type SessionFilterOption<TValue extends boolean | string = string> = {
+  count: number;
+  label: string;
+  value: TValue;
+};
+
+export type SessionListQuery = {
+  archived?: boolean;
+  page: number;
+  perPage: number;
+  project: string[];
+  provider: string[];
+  title: string;
+};
+
+export type SessionListQueryInput = {
+  archived?: unknown;
+  page?: unknown;
+  perPage?: unknown;
+  project?: unknown;
+  provider?: unknown;
+  title?: unknown;
+};
+
 export type SessionSummary = {
   archived: boolean;
   archivedAt: string | null;
@@ -13,4 +37,19 @@ export type SessionSummary = {
   source: string;
   title: string;
   tokensUsed: number;
+};
+
+export type SessionsResponse = {
+  data: SessionSummary[];
+  filters: {
+    archived: SessionFilterOption<boolean>[];
+    projects: SessionFilterOption[];
+    providers: SessionFilterOption[];
+  };
+  pageInfo: {
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  };
 };

@@ -1,15 +1,33 @@
 import { Link } from "@tanstack/react-router";
-import { RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon, XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import type { SessionSummary } from "@/features/sessions/model";
+import type {
+  SessionFilterOption,
+  SessionsResponse,
+  SessionSummary,
+} from "@/features/sessions/model";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
+import { Input } from "@/ui/components/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/ui/components/pagination";
 import { Skeleton } from "@/ui/components/skeleton";
-import { formatCompactNumber } from "@/ui/lib/number-format";
+import { formatCompactNumber, formatIntegerNumber } from "@/ui/lib/number-format";
 import { cn } from "@/ui/lib/utils";
 
-export type SessionsFilterValue = "all" | "active" | "archived";
+export type SessionTag = {
+  id: string;
+  label: string;
+  onRemove: () => void;
+};
 
 type SessionsPageHeaderProps = {
   isRefreshing: boolean;
@@ -33,37 +51,164 @@ export function SessionsPageHeader({ isRefreshing, onRefresh }: SessionsPageHead
   );
 }
 
-type SessionsFilterProps = {
-  onChange: (value: SessionsFilterValue) => void;
-  value: SessionsFilterValue;
+type SessionsFilterSidebarProps = {
+  archived: boolean | undefined;
+  filters: SessionsResponse["filters"];
+  onArchivedChange: (archived: boolean) => void;
+  onProjectToggle: (project: string) => void;
+  onProviderToggle: (provider: string) => void;
+  projects: string[];
+  providers: string[];
 };
 
-const FILTER_OPTIONS = [
-  { labelKey: "sessions_filter_all", value: "all" },
-  { labelKey: "sessions_filter_active", value: "active" },
-  { labelKey: "sessions_filter_archived", value: "archived" },
-] as const satisfies { labelKey: keyof RuntimeMessages; value: SessionsFilterValue }[];
-
-type RuntimeMessages = ReturnType<typeof useRuntimeI18n>["t"];
-
-export function SessionsFilter({ onChange, value }: SessionsFilterProps) {
+export function SessionsFilterSidebar({
+  archived,
+  filters,
+  onArchivedChange,
+  onProjectToggle,
+  onProviderToggle,
+  projects,
+  providers,
+}: SessionsFilterSidebarProps) {
   const { t } = useRuntimeI18n();
 
   return (
-    <div className="inline-flex rounded-lg border p-0.5">
-      {FILTER_OPTIONS.map((option) => {
-        const active = option.value === value;
-        return (
-          <Button
-            key={option.value}
-            size="sm"
-            variant={active ? "secondary" : "ghost"}
-            onClick={() => onChange(option.value)}
+    <aside className="grid content-start gap-4 lg:w-64 lg:shrink-0">
+      <FilterGroup title={t.sessions_filter_project()}>
+        {filters.projects.length === 0 ? (
+          <FilterEmpty>{t.sessions_filter_empty()}</FilterEmpty>
+        ) : (
+          filters.projects.map((filter) => (
+            <FilterOptionButton
+              key={filter.value}
+              active={projects.includes(filter.value)}
+              count={filter.count}
+              label={filter.label}
+              title={filter.value}
+              onClick={() => onProjectToggle(filter.value)}
+            />
+          ))
+        )}
+      </FilterGroup>
+
+      <FilterGroup title={t.sessions_filter_provider()}>
+        {filters.providers.length === 0 ? (
+          <FilterEmpty>{t.sessions_filter_empty()}</FilterEmpty>
+        ) : (
+          filters.providers.map((filter) => (
+            <FilterOptionButton
+              key={filter.value}
+              active={providers.includes(filter.value)}
+              count={filter.count}
+              label={filter.label}
+              onClick={() => onProviderToggle(filter.value)}
+            />
+          ))
+        )}
+      </FilterGroup>
+
+      <FilterGroup title={t.sessions_filter_archived_state()}>
+        {filters.archived.map((filter) => (
+          <FilterOptionButton
+            key={String(filter.value)}
+            active={archived === filter.value}
+            count={filter.count}
+            label={filter.value ? t.session_status_archived() : t.session_status_active()}
+            onClick={() => onArchivedChange(filter.value)}
+          />
+        ))}
+      </FilterGroup>
+    </aside>
+  );
+}
+
+type FilterGroupProps = {
+  children: ReactNode;
+  title: string;
+};
+
+function FilterGroup({ children, title }: FilterGroupProps) {
+  return (
+    <section className="grid gap-2">
+      <h2 className="text-muted-foreground text-xs font-medium">{title}</h2>
+      <div className="grid gap-1">{children}</div>
+    </section>
+  );
+}
+
+function FilterEmpty({ children }: { children: ReactNode }) {
+  return <p className="text-muted-foreground px-2 py-1 text-xs">{children}</p>;
+}
+
+type FilterOptionButtonProps = {
+  active: boolean;
+  count: number;
+  label: string;
+  onClick: () => void;
+  title?: string;
+};
+
+function FilterOptionButton({ active, count, label, onClick, title }: FilterOptionButtonProps) {
+  const { locale } = useRuntimeI18n();
+
+  return (
+    <Button
+      variant={active ? "secondary" : "ghost"}
+      className="h-auto justify-between gap-3 px-2 py-1.5 text-start"
+      title={title ?? label}
+      onClick={onClick}
+    >
+      <span className="min-w-0 truncate">{label}</span>
+      <span className="text-muted-foreground font-mono text-xs tabular-nums">
+        {formatIntegerNumber(count, locale)}
+      </span>
+    </Button>
+  );
+}
+
+type SessionsSearchBarProps = {
+  onTitleChange: (title: string) => void;
+  title: string;
+};
+
+export function SessionsSearchBar({ onTitleChange, title }: SessionsSearchBarProps) {
+  const { t } = useRuntimeI18n();
+
+  return (
+    <Input
+      aria-label={t.sessions_search_label()}
+      placeholder={t.sessions_search_placeholder()}
+      value={title}
+      onChange={(event) => onTitleChange(event.target.value)}
+    />
+  );
+}
+
+type SessionsActiveTagsProps = {
+  tags: SessionTag[];
+};
+
+export function SessionsActiveTags({ tags }: SessionsActiveTagsProps) {
+  if (tags.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tags.map((tag) => (
+        <span
+          key={tag.id}
+          className="bg-secondary text-secondary-foreground inline-flex max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs"
+        >
+          <span className="truncate">{tag.label}</span>
+          <button
+            type="button"
+            className="hover:bg-muted-foreground/10 focus-visible:border-ring focus-visible:ring-ring/50 rounded-sm p-0.5 outline-none focus-visible:ring-2"
+            aria-label={tag.label}
+            onClick={tag.onRemove}
           >
-            {t[option.labelKey]()}
-          </Button>
-        );
-      })}
+            <XIcon aria-hidden="true" className="size-3" />
+          </button>
+        </span>
+      ))}
     </div>
   );
 }
@@ -112,6 +257,116 @@ export function SessionCard({ session }: SessionCardProps) {
   );
 }
 
+export function SessionsPagination({
+  onPageChange,
+  pageInfo,
+}: {
+  onPageChange: (page: number) => void;
+  pageInfo: SessionsResponse["pageInfo"];
+}) {
+  const { locale, t } = useRuntimeI18n();
+  const canGoBack = pageInfo.page > 1;
+  const canGoForward = pageInfo.page < pageInfo.totalPages;
+  const pages = createPaginationItems(pageInfo.page, pageInfo.totalPages);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-muted-foreground text-sm">
+        {t.sessions_pagination_summary({
+          page: formatIntegerNumber(pageInfo.page, locale),
+          totalPages: formatIntegerNumber(Math.max(pageInfo.totalPages, 1), locale),
+          total: formatIntegerNumber(pageInfo.total, locale),
+        })}
+      </p>
+      <Pagination className="mx-0 w-auto justify-end">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href="#"
+              disabled={!canGoBack}
+              onClick={(event) => {
+                event.preventDefault();
+                if (canGoBack) onPageChange(pageInfo.page - 1);
+              }}
+            >
+              {t.sessions_pagination_previous()}
+            </PaginationPrevious>
+          </PaginationItem>
+          {pages.map((page) => (
+            <PaginationItem key={page}>
+              {typeof page === "number" ? (
+                <PaginationLink
+                  href="#"
+                  isActive={page === pageInfo.page}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (page !== pageInfo.page) onPageChange(page);
+                  }}
+                >
+                  {formatIntegerNumber(page, locale)}
+                </PaginationLink>
+              ) : (
+                <PaginationEllipsis />
+              )}
+            </PaginationItem>
+          ))}
+          <PaginationItem>
+            <PaginationNext
+              href="#"
+              disabled={!canGoForward}
+              onClick={(event) => {
+                event.preventDefault();
+                if (canGoForward) onPageChange(pageInfo.page + 1);
+              }}
+            >
+              {t.sessions_pagination_next()}
+            </PaginationNext>
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
+  );
+}
+
+function createPaginationItems(
+  page: number,
+  totalPages: number,
+): Array<"ellipsis-end" | "ellipsis-start" | number> {
+  if (totalPages <= 0) return [];
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages = new Set([1, totalPages, page, page - 1, page + 1]);
+
+  if (page <= 4) {
+    pages.add(2);
+    pages.add(3);
+    pages.add(4);
+    pages.add(5);
+  }
+
+  if (page >= totalPages - 3) {
+    pages.add(totalPages - 4);
+    pages.add(totalPages - 3);
+    pages.add(totalPages - 2);
+    pages.add(totalPages - 1);
+  }
+
+  const visiblePages = [...pages]
+    .filter((visiblePage) => visiblePage >= 1 && visiblePage <= totalPages)
+    .sort((a, b) => a - b);
+  const items: Array<"ellipsis-end" | "ellipsis-start" | number> = [];
+
+  for (const visiblePage of visiblePages) {
+    const previousItem = items.at(-1);
+    if (typeof previousItem === "number" && visiblePage - previousItem > 1) {
+      items.push(previousItem === 1 ? "ellipsis-start" : "ellipsis-end");
+    }
+    items.push(visiblePage);
+  }
+
+  return items;
+}
+
 export function SessionsSkeleton() {
   return (
     <div className="grid gap-3">
@@ -132,4 +387,8 @@ export function SessionsError({ message }: { message: string }) {
 
 export function SessionsEmpty({ message }: { message: string }): ReactNode {
   return <p className="text-muted-foreground text-sm">{message}</p>;
+}
+
+export function findFilterLabel(filters: SessionFilterOption[], value: string): string {
+  return filters.find((filter) => filter.value === value)?.label ?? value;
 }

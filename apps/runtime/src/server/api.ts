@@ -31,7 +31,19 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
       ),
     )
     .get("/sessions", async (context) =>
-      context.json(await listSessions({ codexHome: options.codexHome })),
+      context.json(
+        await listSessions({
+          codexHome: options.codexHome,
+          query: {
+            archived: context.req.query("archived"),
+            page: context.req.query("page"),
+            perPage: context.req.query("perPage"),
+            project: context.req.queries("project"),
+            provider: context.req.queries("provider"),
+            title: context.req.query("title"),
+          },
+        }),
+      ),
     )
     .get("/settings", async (context) => context.json(await settings.read()))
     .patch("/settings", async (context) => {

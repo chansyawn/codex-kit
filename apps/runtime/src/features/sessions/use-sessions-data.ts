@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { readSessions } from "@/features/sessions/client";
+import { readSessions, type ReadSessionsQuery } from "@/features/sessions/client";
 
-export function useSessionsData() {
+export function useSessionsData(query: ReadSessionsQuery) {
   const sessionsQuery = useQuery({
-    queryFn: readSessions,
-    queryKey: ["sessions"],
+    queryFn: () => readSessions(query),
+    queryKey: ["sessions", query],
   });
 
   return {

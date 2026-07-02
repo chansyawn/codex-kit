@@ -1,45 +1,170 @@
 import { useMemo, useState } from "react";
 
 import {
+  findFilterLabel,
+  SessionsActiveTags,
   SessionsEmpty,
   SessionsError,
-  SessionsFilter,
-  type SessionsFilterValue,
+  SessionsFilterSidebar,
   SessionsPageHeader,
+  SessionsPagination,
+  SessionsSearchBar,
   SessionsSkeleton,
+  type SessionTag,
   SessionCard,
 } from "@/features/sessions/components";
+import type { SessionListQuery } from "@/features/sessions/model";
 import { useSessionsData } from "@/features/sessions/use-sessions-data";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_PER_PAGE = 20;
+
 export function SessionsPage() {
   const { t } = useRuntimeI18n();
-  const { isRefreshing, refresh, sessionsQuery } = useSessionsData();
-  const [filter, setFilter] = useState<SessionsFilterValue>("all");
+  const [title, setTitle] = useState("");
+  const [projects, setProjects] = useState<string[]>([]);
+  const [providers, setProviders] = useState<string[]>([]);
+  const [archived, setArchived] = useState<boolean | undefined>();
+  const [page, setPage] = useState(DEFAULT_PAGE);
 
-  const sessions = sessionsQuery.data ?? [];
-  const visibleSessions = useMemo(() => {
-    if (filter === "active") return sessions.filter((session) => !session.archived);
-    if (filter === "archived") return sessions.filter((session) => session.archived);
-    return sessions;
-  }, [filter, sessions]);
+  const query = useMemo<SessionListQuery>(
+    () => ({
+      archived,
+      page,
+      perPage: DEFAULT_PER_PAGE,
+      project: projects,
+      provider: providers,
+      title,
+    }),
+    [archived, page, projects, providers, title],
+  );
+  const { isRefreshing, refresh, sessionsQuery } = useSessionsData(query);
+  const sessionsResponse = sessionsQuery.data;
+  const filters = sessionsResponse?.filters ?? { archived: [], projects: [], providers: [] };
+  const pageInfo = sessionsResponse?.pageInfo ?? {
+    page: DEFAULT_PAGE,
+    perPage: DEFAULT_PER_PAGE,
+    total: 0,
+    totalPages: 0,
+  };
+
+  const tags = useMemo<SessionTag[]>(
+    () => [
+      ...projects.map((project) => ({
+        id: `project:${project}`,
+        label: `${t.sessions_filter_project()}: ${findFilterLabel(filters.projects, project)}`,
+        onRemove: () => removeProject(project),
+      })),
+      ...providers.map((provider) => ({
+        id: `provider:${provider}`,
+        label: `${t.sessions_filter_provider()}: ${findFilterLabel(filters.providers, provider)}`,
+        onRemove: () => removeProvider(provider),
+      })),
+      ...(archived === undefined
+        ? []
+        : [
+            {
+              id: `archived:${String(archived)}`,
+              label: `${t.sessions_filter_archived_state()}: ${
+                archived ? t.session_status_archived() : t.session_status_active()
+              }`,
+              onRemove: clearArchived,
+            },
+          ]),
+    ],
+    [archived, filters.projects, filters.providers, projects, providers, t],
+  );
+
+  function resetPage(): void {
+    setPage(DEFAULT_PAGE);
+  }
+
+  function updateTitle(value: string): void {
+    setTitle(value);
+    resetPage();
+  }
+
+  function toggleProject(project: string): void {
+    setProjects((currentProjects) => toggleValue(currentProjects, project));
+    resetPage();
+  }
+
+  function removeProject(project: string): void {
+    setProjects((currentProjects) =>
+      currentProjects.filter((currentProject) => currentProject !== project),
+    );
+    resetPage();
+  }
+
+  function toggleProvider(provider: string): void {
+    setProviders((currentProviders) => toggleValue(currentProviders, provider));
+    resetPage();
+  }
+
+  function removeProvider(provider: string): void {
+    setProviders((currentProviders) =>
+      currentProviders.filter((currentProvider) => currentProvider !== provider),
+    );
+    resetPage();
+  }
+
+  function updateArchived(value: boolean): void {
+    setArchived((currentArchived) => (currentArchived === value ? undefined : value));
+    resetPage();
+  }
+
+  function clearArchived(): void {
+    setArchived(undefined);
+    resetPage();
+  }
 
   return (
     <>
       <SessionsPageHeader isRefreshing={isRefreshing} onRefresh={refresh} />
 
-      <SessionsFilter value={filter} onChange={setFilter} />
+      <div className="grid gap-5 lg:flex lg:items-start">
+        <SessionsFilterSidebar
+          archived={archived}
+          filters={filters}
+          projects={projects}
+          providers={providers}
+          onArchivedChange={updateArchived}
+          onProjectToggle={toggleProject}
+          onProviderToggle={toggleProvider}
+        />
 
-      <div className="grid gap-3">
-        {sessionsQuery.isError ? <SessionsError message={t.sessions_load_error()} /> : null}
-        {!sessionsQuery.isError && sessionsQuery.isLoading ? <SessionsSkeleton /> : null}
-        {!sessionsQuery.isError && !sessionsQuery.isLoading && visibleSessions.length === 0 ? (
-          <SessionsEmpty message={t.sessions_empty()} />
-        ) : null}
-        {visibleSessions.map((session) => (
-          <SessionCard key={session.id} session={session} />
-        ))}
+        <section className="grid min-w-0 flex-1 gap-4">
+          <div className="grid gap-3">
+            <SessionsSearchBar title={title} onTitleChange={updateTitle} />
+            <SessionsActiveTags tags={tags} />
+          </div>
+
+          <div className="grid gap-3">
+            {sessionsQuery.isError ? <SessionsError message={t.sessions_load_error()} /> : null}
+            {!sessionsQuery.isError && sessionsQuery.isLoading ? <SessionsSkeleton /> : null}
+            {!sessionsQuery.isError &&
+            !sessionsQuery.isLoading &&
+            sessionsResponse &&
+            sessionsResponse.data.length === 0 ? (
+              <SessionsEmpty message={t.sessions_empty()} />
+            ) : null}
+            {sessionsResponse?.data.map((session) => (
+              <SessionCard key={session.id} session={session} />
+            ))}
+          </div>
+
+          {!sessionsQuery.isError && !sessionsQuery.isLoading ? (
+            <SessionsPagination pageInfo={pageInfo} onPageChange={setPage} />
+          ) : null}
+        </section>
       </div>
     </>
   );
+}
+
+function toggleValue(values: string[], value: string): string[] {
+  return values.includes(value)
+    ? values.filter((currentValue) => currentValue !== value)
+    : [...values, value];
 }
