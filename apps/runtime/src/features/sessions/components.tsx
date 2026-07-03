@@ -10,6 +10,7 @@ import type {
 } from "@/features/sessions/model";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
+import { EllipsisTooltip } from "@/ui/components/ellipsis-tooltip";
 import { Input } from "@/ui/components/input";
 import {
   Pagination,
@@ -93,7 +94,6 @@ export function SessionsFilterSidebar({
                   active={projects.includes(filter.value)}
                   count={filter.count}
                   label={filter.label}
-                  title={filter.value}
                   onClick={() => onProjectToggle(filter.value)}
                 />
               ))
@@ -170,21 +170,19 @@ type FilterOptionButtonProps = {
   count: number;
   label: string;
   onClick: () => void;
-  title?: string;
 };
 
-function FilterOptionButton({ active, count, label, onClick, title }: FilterOptionButtonProps) {
+function FilterOptionButton({ active, count, label, onClick }: FilterOptionButtonProps) {
   const { locale } = useRuntimeI18n();
 
   return (
     <Button
       variant={active ? "secondary" : "ghost"}
-      className="h-auto justify-between gap-3 px-2 py-1.5 text-start"
-      title={title ?? label}
+      className="h-auto min-w-0 justify-between gap-3 px-2 py-1.5 text-start"
       onClick={onClick}
     >
-      <span className="min-w-0 truncate">{label}</span>
-      <span className="text-muted-foreground font-mono text-xs tabular-nums">
+      <EllipsisTooltip>{label}</EllipsisTooltip>
+      <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
         {formatIntegerNumber(count, locale)}
       </span>
     </Button>
