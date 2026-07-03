@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { RefreshCwIcon, XIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { ChevronRightIcon, RefreshCwIcon, XIcon } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import type {
   SessionFilterOption,
@@ -10,6 +10,7 @@ import type {
 } from "@/features/sessions/model";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/components/collapsible";
 import { EllipsisTooltip } from "@/ui/components/ellipsis-tooltip";
 import { Input } from "@/ui/components/input";
 import {
@@ -84,7 +85,11 @@ export function SessionsFilterSidebar({
       {isLoading ? <SessionsFilterSkeleton /> : null}
       {!isLoading ? (
         <>
-          <FilterGroup title={t.sessions_filter_project()}>
+          <FilterGroup
+            count={filters.projects.length}
+            selectedCount={projects.length}
+            title={t.sessions_filter_project()}
+          >
             {filters.projects.length === 0 ? (
               <FilterEmpty>{t.sessions_filter_empty()}</FilterEmpty>
             ) : (
@@ -100,7 +105,11 @@ export function SessionsFilterSidebar({
             )}
           </FilterGroup>
 
-          <FilterGroup title={t.sessions_filter_provider()}>
+          <FilterGroup
+            count={filters.providers.length}
+            selectedCount={providers.length}
+            title={t.sessions_filter_provider()}
+          >
             {filters.providers.length === 0 ? (
               <FilterEmpty>{t.sessions_filter_empty()}</FilterEmpty>
             ) : (
@@ -116,7 +125,11 @@ export function SessionsFilterSidebar({
             )}
           </FilterGroup>
 
-          <FilterGroup title={t.sessions_filter_archived_state()}>
+          <FilterGroup
+            count={filters.archived.length}
+            selectedCount={archived === undefined ? 0 : 1}
+            title={t.sessions_filter_archived_state()}
+          >
             {filters.archived.map((filter) => (
               <FilterOptionButton
                 key={String(filter.value)}
@@ -149,15 +162,64 @@ function SessionsFilterSkeleton() {
 
 type FilterGroupProps = {
   children: ReactNode;
+  count: number;
+  defaultOpen?: boolean;
+  selectedCount: number;
   title: string;
 };
 
-function FilterGroup({ children, title }: FilterGroupProps) {
+function FilterGroup({
+  children,
+  count,
+  defaultOpen = false,
+  selectedCount,
+  title,
+}: FilterGroupProps) {
+  const { locale } = useRuntimeI18n();
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
-    <section className="grid gap-2">
-      <h2 className="text-muted-foreground text-xs font-medium">{title}</h2>
-      <div className="grid gap-1">{children}</div>
-    </section>
+    <Collapsible render={<section className="grid gap-2" />} open={open} onOpenChange={setOpen}>
+      <h2>
+        <CollapsibleTrigger className="hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 text-muted-foreground flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-start text-xs font-medium transition-colors outline-none focus-visible:ring-2">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <ChevronRightIcon
+              aria-hidden="true"
+              className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-90")}
+            />
+            <span className="truncate">{title}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1">
+            {selectedCount > 0 ? (
+              <FilterCountBadge variant="selected">
+                {formatIntegerNumber(selectedCount, locale)}
+              </FilterCountBadge>
+            ) : null}
+            <FilterCountBadge>{formatIntegerNumber(count, locale)}</FilterCountBadge>
+          </span>
+        </CollapsibleTrigger>
+      </h2>
+      <CollapsibleContent className="grid gap-1">{children}</CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function FilterCountBadge({
+  children,
+  variant = "muted",
+}: {
+  children: ReactNode;
+  variant?: "muted" | "selected";
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 font-mono text-[0.7rem] tabular-nums",
+        variant === "selected" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
