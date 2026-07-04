@@ -52,7 +52,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
     plugins: lazyPlugins(async () => [
       devServer({
         entry: "./src/server/entry.ts",
-        exclude: [/.*\.[a-zA-Z0-9]+(?:\?.*)?$/, ...defaultOptions.exclude],
+        exclude: [/^[^?]*\.[a-zA-Z0-9]+(?:\?.*)?$/, ...defaultOptions.exclude],
         injectClientScript: false,
         adapter: nodeAdapter(),
       }),
