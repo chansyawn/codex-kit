@@ -31,7 +31,15 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
       ),
     )
     .get("/sessions/filters", async (context) =>
-      context.json(await listSessionFilters({ codexHome: options.codexHome })),
+      context.json(
+        await listSessionFilters({
+          codexHome: options.codexHome,
+          query: {
+            lastActivityFrom: context.req.query("lastActivityFrom"),
+            lastActivityTo: context.req.query("lastActivityTo"),
+          },
+        }),
+      ),
     )
     .get("/sessions", async (context) =>
       context.json(
@@ -39,6 +47,8 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
           codexHome: options.codexHome,
           query: {
             archived: context.req.query("archived"),
+            lastActivityFrom: context.req.query("lastActivityFrom"),
+            lastActivityTo: context.req.query("lastActivityTo"),
             page: context.req.query("page"),
             perPage: context.req.query("perPage"),
             project: context.req.queries("project"),

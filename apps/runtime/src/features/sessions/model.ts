@@ -6,6 +6,8 @@ export type SessionFilterOption<TValue extends boolean | string = string> = {
 
 export type SessionListQuery = {
   archived?: boolean;
+  lastActivityFrom?: string;
+  lastActivityTo?: string;
   page: number;
   perPage: number;
   project: string[];
@@ -15,6 +17,8 @@ export type SessionListQuery = {
 
 export type SessionListQueryInput = {
   archived?: unknown;
+  lastActivityFrom?: unknown;
+  lastActivityTo?: unknown;
   page?: unknown;
   perPage?: unknown;
   project?: unknown;

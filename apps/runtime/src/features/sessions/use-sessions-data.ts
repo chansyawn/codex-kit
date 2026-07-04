@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   readSessionFilters,
   readSessions,
+  type ReadSessionFiltersQuery,
   type ReadSessionsQuery,
 } from "@/features/sessions/client";
 
@@ -21,10 +22,10 @@ export function useSessionsData(query: ReadSessionsQuery) {
   };
 }
 
-export function useSessionFiltersData() {
+export function useSessionFiltersData(query: ReadSessionFiltersQuery = {}) {
   const sessionFiltersQuery = useQuery({
-    queryFn: readSessionFilters,
-    queryKey: ["session-filters"],
+    queryFn: () => readSessionFilters(query),
+    queryKey: ["session-filters", query],
   });
 
   return {

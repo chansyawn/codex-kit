@@ -16,6 +16,11 @@ export type ListSessionsOptions = {
   query?: SessionListQueryInput;
 };
 
+export type ListSessionFiltersOptions = {
+  codexHome: string;
+  query?: Pick<SessionListQueryInput, "lastActivityFrom" | "lastActivityTo">;
+};
+
 type ThreadRow = {
   archived: number;
   archived_at: number | null;
@@ -81,6 +86,8 @@ function mapRow(row: ThreadRow): SessionSummary {
 export function normalizeSessionListQuery(input: SessionListQueryInput = {}): SessionListQuery {
   return {
     archived: normalizeArchived(input.archived),
+    lastActivityFrom: normalizeIsoDateTimeString(input.lastActivityFrom),
+    lastActivityTo: normalizeIsoDateTimeString(input.lastActivityTo),
     page: normalizePositiveInteger(input.page, DEFAULT_PAGE, Number.MAX_SAFE_INTEGER),
     perPage: normalizePositiveInteger(input.perPage, DEFAULT_PER_PAGE, MAX_PER_PAGE),
     project: normalizeStringList(input.project),
@@ -96,7 +103,7 @@ export async function listSessions(options: ListSessionsOptions): Promise<Sessio
 
   const db = new DatabaseSync(dbPath, { readOnly: true });
   try {
-    const rows = readSessionRows(db, query.title).map(mapRow);
+    const rows = readSessionRows(db, query).map(mapRow);
 
     return createSessionsResponse(rows, query);
   } catch {
@@ -106,20 +113,16 @@ export async function listSessions(options: ListSessionsOptions): Promise<Sessio
   }
 }
 
-export async function listSessionFilters(options: {
-  codexHome: string;
-}): Promise<SessionsFiltersResponse> {
+export async function listSessionFilters(
+  options: ListSessionFiltersOptions,
+): Promise<SessionsFiltersResponse> {
+  const query = normalizeSessionListQuery(options.query);
   const dbPath = `${options.codexHome}/state_5.sqlite`;
   if (!existsSync(dbPath)) return EMPTY_FILTERS;
 
   const db = new DatabaseSync(dbPath, { readOnly: true });
   try {
-    const rows = db
-      .prepare(
-        `SELECT cwd, model_provider, archived
-         FROM threads`,
-      )
-      .all() as SessionFilterRow[];
+    const rows = readSessionFilterRows(db, query);
 
     return createSessionFiltersResponse(rows);
   } catch {
@@ -129,8 +132,8 @@ export async function listSessionFilters(options: {
   }
 }
 
-function readSessionRows(db: DatabaseSync, title: string): ThreadRow[] {
-  const titlePattern = `%${escapeLikePattern(title).toLowerCase()}%`;
+function readSessionRows(db: DatabaseSync, query: SessionListQuery): ThreadRow[] {
+  const { clauses, params } = createSessionWhereClause(query);
 
   return db
     .prepare(
@@ -138,10 +141,22 @@ function readSessionRows(db: DatabaseSync, title: string): ThreadRow[] {
               created_at_ms, updated_at_ms, archived, archived_at,
               tokens_used, preview, git_branch, rollout_path
        FROM threads
-       WHERE lower(title) LIKE ? ESCAPE '\\'
+       WHERE ${clauses.join(" AND ")}
        ORDER BY updated_at_ms DESC, id DESC`,
     )
-    .all(titlePattern) as ThreadRow[];
+    .all(...params) as ThreadRow[];
+}
+
+function readSessionFilterRows(db: DatabaseSync, query: SessionListQuery): SessionFilterRow[] {
+  const { clauses, params } = createTimeRangeWhereClause(query);
+
+  return db
+    .prepare(
+      `SELECT cwd, model_provider, archived
+       FROM threads
+       WHERE ${clauses.join(" AND ")}`,
+    )
+    .all(...params) as SessionFilterRow[];
 }
 
 function createSessionsResponse(
@@ -227,6 +242,41 @@ function matchesArchived(session: SessionSummary, archived: boolean | undefined)
   return archived === undefined || session.archived === archived;
 }
 
+function createSessionWhereClause(query: SessionListQuery): {
+  clauses: string[];
+  params: Array<number | string>;
+} {
+  const titlePattern = `%${escapeLikePattern(query.title).toLowerCase()}%`;
+  const timeRangeClause = createTimeRangeWhereClause(query);
+
+  return {
+    clauses: ["lower(title) LIKE ? ESCAPE '\\'", ...timeRangeClause.clauses],
+    params: [titlePattern, ...timeRangeClause.params],
+  };
+}
+
+function createTimeRangeWhereClause(query: SessionListQuery): {
+  clauses: string[];
+  params: number[];
+} {
+  const clauses = ["1 = 1"];
+  const params: number[] = [];
+  const from = parseIsoDateTime(query.lastActivityFrom);
+  const to = parseIsoDateTime(query.lastActivityTo);
+
+  if (from !== undefined) {
+    clauses.push("updated_at_ms >= ?");
+    params.push(from);
+  }
+
+  if (to !== undefined) {
+    clauses.push("updated_at_ms < ?");
+    params.push(to);
+  }
+
+  return { clauses, params };
+}
+
 function normalizeArchived(value: unknown): boolean | undefined {
   if (value === true || value === "true") return true;
   if (value === false || value === "false") return false;
@@ -248,6 +298,15 @@ function normalizeString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeIsoDateTimeString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+
+  const trimmed = value.trim();
+  const timestamp = parseIsoDateTime(trimmed);
+
+  return timestamp === undefined ? undefined : new Date(timestamp).toISOString();
+}
+
 function normalizeStringList(value: unknown): string[] {
   const values = Array.isArray(value) ? value : [value];
   const uniqueValues = new Set<string>();
@@ -264,4 +323,12 @@ function normalizeStringList(value: unknown): string[] {
 
 function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
+function parseIsoDateTime(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+
+  const timestamp = Date.parse(value);
+
+  return Number.isFinite(timestamp) ? timestamp : undefined;
 }

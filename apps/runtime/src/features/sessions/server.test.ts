@@ -113,6 +113,94 @@ describe("sessions list", () => {
     expect(response.data.map((session) => session.id)).toEqual(["beta-anthropic", "alpha-openai"]);
   });
 
+  it("filters sessions by last activity start inclusively and end exclusively", async () => {
+    const codexHome = await createTempCodexHome();
+    createStateDatabase(codexHome, [
+      createThread({
+        id: "before-range",
+        updatedAtMs: Date.parse("2026-06-23T23:59:59.999+08:00"),
+      }),
+      createThread({
+        id: "range-start",
+        updatedAtMs: Date.parse("2026-06-24T00:00:00.000+08:00"),
+      }),
+      createThread({
+        id: "inside-range",
+        updatedAtMs: Date.parse("2026-06-24T12:00:00.000+08:00"),
+      }),
+      createThread({
+        id: "range-end",
+        updatedAtMs: Date.parse("2026-06-25T00:00:00.000+08:00"),
+      }),
+    ]);
+
+    const response = await listSessions({
+      codexHome,
+      query: {
+        lastActivityFrom: new Date(Date.parse("2026-06-24T00:00:00.000+08:00")).toISOString(),
+        lastActivityTo: new Date(Date.parse("2026-06-25T00:00:00.000+08:00")).toISOString(),
+      },
+    });
+
+    expect(response.data.map((session) => session.id)).toEqual(["inside-range", "range-start"]);
+  });
+
+  it("combines title, field filters, archive state, and last activity range with AND", async () => {
+    const codexHome = await createTempCodexHome();
+    createStateDatabase(codexHome, [
+      createThread({
+        cwd: "/workspace/alpha",
+        id: "matching-session",
+        modelProvider: "openai",
+        title: "Build filters",
+        updatedAtMs: Date.parse("2026-06-24T12:00:00+08:00"),
+      }),
+      createThread({
+        cwd: "/workspace/alpha",
+        id: "outside-time",
+        modelProvider: "openai",
+        title: "Build filters",
+        updatedAtMs: Date.parse("2026-06-20T12:00:00+08:00"),
+      }),
+      createThread({
+        cwd: "/workspace/beta",
+        id: "outside-project",
+        modelProvider: "openai",
+        title: "Build filters",
+        updatedAtMs: Date.parse("2026-06-24T12:00:00+08:00"),
+      }),
+      createThread({
+        cwd: "/workspace/alpha",
+        id: "outside-provider",
+        modelProvider: "anthropic",
+        title: "Build filters",
+        updatedAtMs: Date.parse("2026-06-24T12:00:00+08:00"),
+      }),
+      createThread({
+        archived: true,
+        cwd: "/workspace/alpha",
+        id: "outside-archive",
+        modelProvider: "openai",
+        title: "Build filters",
+        updatedAtMs: Date.parse("2026-06-24T12:00:00+08:00"),
+      }),
+    ]);
+
+    const response = await listSessions({
+      codexHome,
+      query: {
+        archived: false,
+        lastActivityFrom: new Date(Date.parse("2026-06-24T00:00:00+08:00")).toISOString(),
+        lastActivityTo: new Date(Date.parse("2026-06-25T00:00:00+08:00")).toISOString(),
+        project: "/workspace/alpha",
+        provider: "openai",
+        title: "Build",
+      },
+    });
+
+    expect(response.data.map((session) => session.id)).toEqual(["matching-session"]);
+  });
+
   it("normalizes invalid pagination values and caps perPage", () => {
     expect(normalizeSessionListQuery({ page: "0", perPage: "500" })).toMatchObject({
       page: 1,
@@ -122,6 +210,18 @@ describe("sessions list", () => {
       page: 3,
       perPage: 20,
     });
+  });
+
+  it("ignores invalid last activity range values", () => {
+    const query = normalizeSessionListQuery({
+      lastActivityFrom: "not-a-date",
+      lastActivityTo: "2026-06-25T00:00:00.000+08:00",
+    });
+
+    expect(query.lastActivityFrom).toBeUndefined();
+    expect(query.lastActivityTo).toBe("2026-06-24T16:00:00.000Z");
+    expect(query.page).toBe(1);
+    expect(query.perPage).toBe(20);
   });
 
   it("returns stable empty filters when the state database does not exist", async () => {
@@ -195,6 +295,52 @@ describe("sessions list", () => {
     ]);
     expect(filters.archived).toMatchObject([
       { count: 4, value: false },
+      { count: 1, value: true },
+    ]);
+  });
+
+  it("scopes filter counts to the last activity range", async () => {
+    const codexHome = await createTempCodexHome();
+    createStateDatabase(codexHome, [
+      createThread({
+        cwd: "/workspace/alpha",
+        id: "alpha-in-range",
+        modelProvider: "openai",
+        updatedAtMs: Date.parse("2026-06-24T12:00:00+08:00"),
+      }),
+      createThread({
+        archived: true,
+        cwd: "/workspace/beta",
+        id: "beta-in-range",
+        modelProvider: "anthropic",
+        updatedAtMs: Date.parse("2026-06-24T13:00:00+08:00"),
+      }),
+      createThread({
+        cwd: "/workspace/alpha",
+        id: "alpha-outside-range",
+        modelProvider: "openai",
+        updatedAtMs: Date.parse("2026-06-20T12:00:00+08:00"),
+      }),
+    ]);
+
+    const filters = await listSessionFilters({
+      codexHome,
+      query: {
+        lastActivityFrom: new Date(Date.parse("2026-06-24T00:00:00+08:00")).toISOString(),
+        lastActivityTo: new Date(Date.parse("2026-06-25T00:00:00+08:00")).toISOString(),
+      },
+    });
+
+    expect(filters.projects).toMatchObject([
+      { count: 1, label: "alpha", value: "/workspace/alpha" },
+      { count: 1, label: "beta", value: "/workspace/beta" },
+    ]);
+    expect(filters.providers).toMatchObject([
+      { count: 1, value: "anthropic" },
+      { count: 1, value: "openai" },
+    ]);
+    expect(filters.archived).toMatchObject([
+      { count: 1, value: false },
       { count: 1, value: true },
     ]);
   });

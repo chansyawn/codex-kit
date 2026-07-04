@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronRightIcon, RefreshCwIcon, XIcon } from "lucide-react";
+import { CalendarIcon, ChevronRightIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import type { DateRange } from "react-day-picker";
 
 import type {
   SessionFilterOption,
@@ -10,6 +11,7 @@ import type {
 } from "@/features/sessions/model";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Button } from "@/ui/components/button";
+import { Calendar } from "@/ui/components/calendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/components/collapsible";
 import { EllipsisTooltip } from "@/ui/components/ellipsis-tooltip";
 import { Input } from "@/ui/components/input";
@@ -22,6 +24,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/ui/components/pagination";
+import { Popover, PopoverContent, PopoverTrigger } from "@/ui/components/popover";
 import { Skeleton } from "@/ui/components/skeleton";
 import { formatCompactNumber, formatIntegerNumber } from "@/ui/lib/number-format";
 import { cn } from "@/ui/lib/utils";
@@ -30,6 +33,11 @@ export type SessionTag = {
   id: string;
   label: string;
   onRemove: () => void;
+};
+
+export type SessionsTimeRangeValue = {
+  lastActivityFrom?: string;
+  lastActivityTo?: string;
 };
 
 type SessionsPageHeaderProps = {
@@ -62,8 +70,10 @@ type SessionsFilterSidebarProps = {
   onArchivedChange: (archived: boolean) => void;
   onProjectToggle: (project: string) => void;
   onProviderToggle: (provider: string) => void;
+  onTimeRangeChange: (range: SessionsTimeRangeValue) => void;
   projects: string[];
   providers: string[];
+  timeRange: SessionsTimeRangeValue;
 };
 
 export function SessionsFilterSidebar({
@@ -74,13 +84,16 @@ export function SessionsFilterSidebar({
   onArchivedChange,
   onProjectToggle,
   onProviderToggle,
+  onTimeRangeChange,
   projects,
   providers,
+  timeRange,
 }: SessionsFilterSidebarProps) {
   const { t } = useRuntimeI18n();
 
   return (
     <aside className="grid content-start gap-4 lg:w-64 lg:shrink-0">
+      <SessionsTimeRangeFilter value={timeRange} onChange={onTimeRangeChange} />
       {isError ? <p className="text-destructive text-sm">{t.sessions_load_error()}</p> : null}
       {isLoading ? <SessionsFilterSkeleton /> : null}
       {!isLoading ? (
@@ -144,6 +157,106 @@ export function SessionsFilterSidebar({
       ) : null}
     </aside>
   );
+}
+
+type RuntimeMessages = ReturnType<typeof useRuntimeI18n>["t"];
+
+type SessionsTimeRangeFilterProps = {
+  onChange: (range: SessionsTimeRangeValue) => void;
+  value: SessionsTimeRangeValue;
+};
+
+export function SessionsTimeRangeFilter({ onChange, value }: SessionsTimeRangeFilterProps) {
+  const { locale, t } = useRuntimeI18n();
+  const now = new Date();
+  const selectedRange = createCalendarRange(value);
+
+  function selectCustomRange(range: DateRange | undefined): void {
+    if (!range?.from) {
+      onChange({});
+      return;
+    }
+
+    const to = addDays(startOfLocalDay(range.to ?? range.from), 1);
+
+    onChange({
+      lastActivityFrom: startOfLocalDay(range.from).toISOString(),
+      lastActivityTo: minDate(to, new Date()).toISOString(),
+    });
+  }
+
+  return (
+    <section className="grid gap-2">
+      <h2 className="text-muted-foreground px-2 text-xs font-medium">
+        {t.sessions_time_range_title()}
+      </h2>
+      <Popover>
+        <PopoverTrigger
+          render={
+            <Button variant="outline" className="w-full justify-start">
+              <CalendarIcon data-icon="inline-start" />
+              <span className="truncate">{formatTimeRangeLabel(value, locale, t)}</span>
+            </Button>
+          }
+        />
+        <PopoverContent align="start" className="w-auto p-2">
+          <Calendar
+            disabled={{ after: now }}
+            excludeDisabled
+            mode="range"
+            numberOfMonths={2}
+            selected={selectedRange}
+            onSelect={selectCustomRange}
+          />
+        </PopoverContent>
+      </Popover>
+    </section>
+  );
+}
+
+function createCalendarRange(value: SessionsTimeRangeValue): DateRange | undefined {
+  if (!value.lastActivityFrom) return undefined;
+
+  const from = new Date(value.lastActivityFrom);
+  const to = value.lastActivityTo ? new Date(Date.parse(value.lastActivityTo) - 1) : undefined;
+
+  return {
+    from: Number.isNaN(from.getTime()) ? undefined : from,
+    to: to && !Number.isNaN(to.getTime()) ? to : undefined,
+  };
+}
+
+function formatTimeRangeLabel(
+  value: SessionsTimeRangeValue,
+  locale: string,
+  t: RuntimeMessages,
+): string {
+  if (!value.lastActivityFrom) return t.sessions_time_range_all();
+
+  const from = new Date(value.lastActivityFrom);
+  const to = value.lastActivityTo ? new Date(Date.parse(value.lastActivityTo) - 1) : from;
+  const dateFormatter = new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+  return `${dateFormatter.format(from)} - ${dateFormatter.format(to)}`;
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+
+  return nextDate;
+}
+
+function minDate(date: Date, maxDate: Date): Date {
+  return date.getTime() > maxDate.getTime() ? maxDate : date;
 }
 
 function SessionsFilterSkeleton() {

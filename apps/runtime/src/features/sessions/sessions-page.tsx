@@ -12,6 +12,7 @@ import {
   SessionsSkeleton,
   type SessionTag,
   SessionCard,
+  type SessionsTimeRangeValue,
 } from "@/features/sessions/components";
 import type { SessionListQuery } from "@/features/sessions/model";
 import { useSessionFiltersData, useSessionsData } from "@/features/sessions/use-sessions-data";
@@ -31,21 +32,39 @@ export function SessionsPage() {
   const [projects, setProjects] = useState<string[]>([]);
   const [providers, setProviders] = useState<string[]>([]);
   const [archived, setArchived] = useState<boolean | undefined>();
+  const [timeRange, setTimeRange] = useState<SessionsTimeRangeValue>({});
   const [page, setPage] = useState(DEFAULT_PAGE);
 
   const query = useMemo<SessionListQuery>(
     () => ({
       archived,
+      lastActivityFrom: timeRange.lastActivityFrom,
+      lastActivityTo: timeRange.lastActivityTo,
       page,
       perPage: DEFAULT_PER_PAGE,
       project: projects,
       provider: providers,
       title,
     }),
-    [archived, page, projects, providers, title],
+    [
+      archived,
+      page,
+      projects,
+      providers,
+      timeRange.lastActivityFrom,
+      timeRange.lastActivityTo,
+      title,
+    ],
   );
   const { isRefreshing, refresh, sessionsQuery } = useSessionsData(query);
-  const { sessionFiltersQuery } = useSessionFiltersData();
+  const filterQuery = useMemo(
+    () => ({
+      lastActivityFrom: timeRange.lastActivityFrom,
+      lastActivityTo: timeRange.lastActivityTo,
+    }),
+    [timeRange.lastActivityFrom, timeRange.lastActivityTo],
+  );
+  const { sessionFiltersQuery } = useSessionFiltersData(filterQuery);
   const sessionsResponse = sessionsQuery.data;
   const filters = sessionFiltersQuery.data ?? EMPTY_FILTERS;
   const pageInfo = sessionsResponse?.pageInfo ?? {
@@ -125,6 +144,11 @@ export function SessionsPage() {
     resetPage();
   }
 
+  function updateTimeRange(value: SessionsTimeRangeValue): void {
+    setTimeRange(value);
+    resetPage();
+  }
+
   return (
     <>
       <SessionsPageHeader isRefreshing={isRefreshing} onRefresh={refresh} />
@@ -137,9 +161,11 @@ export function SessionsPage() {
           isLoading={sessionFiltersQuery.isLoading}
           projects={projects}
           providers={providers}
+          timeRange={timeRange}
           onArchivedChange={updateArchived}
           onProjectToggle={toggleProject}
           onProviderToggle={toggleProvider}
+          onTimeRangeChange={updateTimeRange}
         />
 
         <section className="grid min-w-0 flex-1 gap-4">
