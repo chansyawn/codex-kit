@@ -29,7 +29,7 @@ export function AppShell() {
         <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b px-4">
           <div className="flex min-w-0 items-center gap-2">
             <SidebarTrigger className="-ms-1" />
-            <Separator orientation="vertical" className="me-2 h-4" />
+            <Separator orientation="vertical" className="me-2 h-4 self-center!" />
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
