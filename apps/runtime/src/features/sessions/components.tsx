@@ -451,7 +451,8 @@ export function SessionCard({ session }: SessionCardProps) {
   const { locale, t } = useRuntimeI18n();
   const workspaceName = formatWorkspaceName(session.cwd);
   const metaSegments = [
-    session.model ? `${session.model}·${session.modelProvider}` : session.modelProvider,
+    session.model,
+    session.modelProvider,
     session.tokensUsed > 0
       ? `${formatCompactNumber(session.tokensUsed, locale)} ${t.session_tokens_label()}`
       : "",
@@ -464,9 +465,9 @@ export function SessionCard({ session }: SessionCardProps) {
       render={<Link to="/sessions/$sessionId" params={{ sessionId: session.id }} />}
       variant="outline"
     >
-      <ItemHeader>
+      <ItemHeader className="items-baseline">
         <ItemTitle className="line-clamp-none min-w-0 flex-1 break-all">{session.title}</ItemTitle>
-        <ItemActions>
+        <ItemActions className="self-baseline">
           <Tooltip>
             <TooltipTrigger
               render={
