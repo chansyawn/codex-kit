@@ -24,6 +24,7 @@ export function useSessionsData(query: ReadSessionsQuery) {
 
 export function useSessionFiltersData(query: ReadSessionFiltersQuery = {}) {
   const sessionFiltersQuery = useQuery({
+    placeholderData: (previousData) => previousData,
     queryFn: () => readSessionFilters(query),
     queryKey: ["session-filters", query],
   });

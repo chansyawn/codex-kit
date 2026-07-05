@@ -187,13 +187,14 @@ export function SessionsTimeRangeFilter({ onChange, value }: SessionsTimeRangeFi
 
   return (
     <section className="grid gap-2">
-      <h2 className="text-muted-foreground px-2 text-xs font-medium">
-        {t.sessions_time_range_title()}
-      </h2>
       <Popover>
         <PopoverTrigger
           render={
-            <Button variant="outline" className="w-full justify-start">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              aria-label={t.sessions_time_range_title()}
+            >
               <CalendarIcon data-icon="inline-start" />
               <span className="truncate">{formatTimeRangeLabel(value, locale, t)}</span>
             </Button>
