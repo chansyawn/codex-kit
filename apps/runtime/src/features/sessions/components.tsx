@@ -1,11 +1,6 @@
+import Codex from "@lobehub/icons/es/Codex";
 import { Link } from "@tanstack/react-router";
-import {
-  CalendarIcon,
-  ChevronRightIcon,
-  ExternalLinkIcon,
-  RefreshCwIcon,
-  XIcon,
-} from "lucide-react";
+import { CalendarIcon, ChevronRightIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { DateRange } from "react-day-picker";
 
@@ -19,6 +14,7 @@ import { createCodexSessionDeeplink } from "@/features/sessions/session-links";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Badge } from "@/ui/components/badge";
 import { Button } from "@/ui/components/button";
+import { ButtonGroup } from "@/ui/components/button-group";
 import { Calendar } from "@/ui/components/calendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/components/collapsible";
 import { EllipsisTooltip } from "@/ui/components/ellipsis-tooltip";
@@ -469,7 +465,10 @@ export function SessionCard({ session }: SessionCardProps) {
   ].filter(Boolean);
 
   return (
-    <Item variant="outline" className="hover:bg-muted relative pe-14">
+    <Item
+      variant="outline"
+      className="[&:hover:not(:has([data-slot=item-actions]:hover))]:bg-muted relative pe-14"
+    >
       <Link
         to="/sessions/$sessionId"
         params={{ sessionId: session.id }}
@@ -491,22 +490,24 @@ export function SessionCard({ session }: SessionCardProps) {
           <p className="text-muted-foreground text-xs">{metaSegments.join(" · ")}</p>
         </ItemFooter>
       </div>
-      <ItemActions className="pointer-events-auto absolute inset-e-3 top-2.5 z-20">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                render={<a href={createCodexSessionDeeplink(session.id)} />}
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t.session_action_open_in_codex()}
-              >
-                <ExternalLinkIcon aria-hidden="true" />
-              </Button>
-            }
-          />
-          <TooltipContent>{t.session_action_open_in_codex()}</TooltipContent>
-        </Tooltip>
+      <ItemActions className="pointer-events-auto absolute inset-e-1 top-1 z-20">
+        <ButtonGroup orientation="vertical">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  render={<a href={createCodexSessionDeeplink(session.id)} />}
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t.session_action_open_in_codex()}
+                >
+                  <Codex.Color aria-hidden="true" size={16} />
+                </Button>
+              }
+            />
+            <TooltipContent>{t.session_action_open_in_codex()}</TooltipContent>
+          </Tooltip>
+        </ButtonGroup>
       </ItemActions>
     </Item>
   );
