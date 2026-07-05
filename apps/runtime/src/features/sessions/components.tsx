@@ -520,13 +520,12 @@ export function SessionsPagination({
             <PaginationPrevious
               href="#"
               disabled={!canGoBack}
+              text={t.sessions_pagination_previous()}
               onClick={(event) => {
                 event.preventDefault();
                 if (canGoBack) onPageChange(pageInfo.page - 1);
               }}
-            >
-              {t.sessions_pagination_previous()}
-            </PaginationPrevious>
+            />
           </PaginationItem>
           {pages.map((page) => (
             <PaginationItem key={page}>
@@ -550,13 +549,12 @@ export function SessionsPagination({
             <PaginationNext
               href="#"
               disabled={!canGoForward}
+              text={t.sessions_pagination_next()}
               onClick={(event) => {
                 event.preventDefault();
                 if (canGoForward) onPageChange(pageInfo.page + 1);
               }}
-            >
-              {t.sessions_pagination_next()}
-            </PaginationNext>
+            />
           </PaginationItem>
         </PaginationContent>
       </Pagination>

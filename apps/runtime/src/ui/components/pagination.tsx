@@ -1,3 +1,4 @@
+import type { VariantProps } from "class-variance-authority";
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
 import type * as React from "react";
 
@@ -20,7 +21,7 @@ function PaginationContent({ className, ...props }: React.ComponentProps<"ul">) 
   return (
     <ul
       data-slot="pagination-content"
-      className={cn("flex flex-row items-center gap-1", className)}
+      className={cn("flex items-center gap-0.5", className)}
       {...props}
     />
   );
@@ -33,9 +34,16 @@ function PaginationItem({ ...props }: React.ComponentProps<"li">) {
 type PaginationLinkProps = {
   disabled?: boolean;
   isActive?: boolean;
+  size?: VariantProps<typeof buttonVariants>["size"];
 } & React.ComponentProps<"a">;
 
-function PaginationLink({ className, disabled, isActive, ...props }: PaginationLinkProps) {
+function PaginationLink({
+  className,
+  disabled,
+  isActive,
+  size = "icon",
+  ...props
+}: PaginationLinkProps) {
   return (
     <a
       aria-current={isActive ? "page" : undefined}
@@ -45,7 +53,7 @@ function PaginationLink({ className, disabled, isActive, ...props }: PaginationL
       data-slot="pagination-link"
       className={cn(
         buttonVariants({
-          size: "icon",
+          size,
           variant: isActive ? "outline" : "ghost",
         }),
         disabled && "pointer-events-none opacity-50",
@@ -59,33 +67,35 @@ function PaginationLink({ className, disabled, isActive, ...props }: PaginationL
 
 function PaginationPrevious({
   className,
-  children,
+  text = "Previous",
   ...props
-}: React.ComponentProps<typeof PaginationLink>) {
+}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
   return (
     <PaginationLink
       aria-label="Go to previous page"
-      className={cn("size-auto gap-1 px-2.5", className)}
+      size="default"
+      className={cn("ps-1.5", className)}
       {...props}
     >
       <ChevronLeftIcon data-icon="inline-start" />
-      {children}
+      <span>{text}</span>
     </PaginationLink>
   );
 }
 
 function PaginationNext({
   className,
-  children,
+  text = "Next",
   ...props
-}: React.ComponentProps<typeof PaginationLink>) {
+}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
   return (
     <PaginationLink
       aria-label="Go to next page"
-      className={cn("size-auto gap-1 px-2.5", className)}
+      size="default"
+      className={cn("pe-1.5", className)}
       {...props}
     >
-      {children}
+      <span>{text}</span>
       <ChevronRightIcon data-icon="inline-end" />
     </PaginationLink>
   );

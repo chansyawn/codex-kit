@@ -20,7 +20,7 @@ import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { ItemGroup } from "@/ui/components/item";
 
 const DEFAULT_PAGE = 1;
-const DEFAULT_PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 10;
 const EMPTY_FILTERS = {
   archived: [],
   projects: [],

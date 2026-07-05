@@ -9,6 +9,7 @@ import {
 
 export function useSessionsData(query: ReadSessionsQuery) {
   const sessionsQuery = useQuery({
+    placeholderData: (previousData) => previousData,
     queryFn: () => readSessions(query),
     queryKey: ["sessions", query],
   });
