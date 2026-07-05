@@ -10,11 +10,22 @@ import type {
   SessionSummary,
 } from "@/features/sessions/model";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
+import { Badge } from "@/ui/components/badge";
 import { Button } from "@/ui/components/button";
 import { Calendar } from "@/ui/components/calendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/components/collapsible";
 import { EllipsisTooltip } from "@/ui/components/ellipsis-tooltip";
 import { Input } from "@/ui/components/input";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemGroup,
+  ItemHeader,
+  ItemTitle,
+} from "@/ui/components/item";
 import {
   Pagination,
   PaginationContent,
@@ -326,14 +337,15 @@ function FilterCountBadge({
   variant?: "muted" | "selected";
 }) {
   return (
-    <span
+    <Badge
+      variant={variant === "selected" ? "default" : "secondary"}
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 font-mono text-[0.7rem] tabular-nums",
+        "h-5 min-w-5 rounded-md px-1.5 font-mono text-[0.7rem] tabular-nums",
         variant === "selected" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
       )}
     >
       {children}
-    </span>
+    </Badge>
   );
 }
 
@@ -352,16 +364,26 @@ function FilterOptionButton({ active, count, label, onClick }: FilterOptionButto
   const { locale } = useRuntimeI18n();
 
   return (
-    <Button
-      variant={active ? "secondary" : "ghost"}
-      className="h-auto min-w-0 justify-between gap-3 px-2 py-1.5 text-start"
+    <Item
+      render={<Button variant={active ? "secondary" : "ghost"} />}
+      size="xs"
+      className="h-auto min-w-0 justify-between gap-3 rounded-md border-transparent px-2 py-1.5 text-start"
       onClick={onClick}
     >
-      <EllipsisTooltip>{label}</EllipsisTooltip>
-      <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
-        {formatIntegerNumber(count, locale)}
-      </span>
-    </Button>
+      <ItemContent className="min-w-0 gap-0">
+        <ItemTitle className="max-w-full text-xs font-normal">
+          <EllipsisTooltip>{label}</EllipsisTooltip>
+        </ItemTitle>
+      </ItemContent>
+      <ItemActions>
+        <Badge
+          variant="ghost"
+          className="text-muted-foreground h-5 min-w-5 px-1.5 font-mono text-xs tabular-nums"
+        >
+          {formatIntegerNumber(count, locale)}
+        </Badge>
+      </ItemActions>
+    </Item>
   );
 }
 
@@ -393,10 +415,7 @@ export function SessionsActiveTags({ tags }: SessionsActiveTagsProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {tags.map((tag) => (
-        <span
-          key={tag.id}
-          className="bg-secondary text-secondary-foreground inline-flex max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs"
-        >
+        <Badge key={tag.id} variant="secondary" className="max-w-full gap-1 rounded-md py-1">
           <span className="truncate">{tag.label}</span>
           <button
             type="button"
@@ -406,7 +425,7 @@ export function SessionsActiveTags({ tags }: SessionsActiveTagsProps) {
           >
             <XIcon aria-hidden="true" className="size-3" />
           </button>
-        </span>
+        </Badge>
       ))}
     </div>
   );
@@ -431,28 +450,35 @@ export function SessionCard({ session }: SessionCardProps) {
   ].filter(Boolean);
 
   return (
-    <Link
-      to="/sessions/$sessionId"
-      params={{ sessionId: session.id }}
-      className="bg-card hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-ring/50 block rounded-lg border p-4 transition-colors outline-none focus-visible:ring-3"
+    <Item
+      render={<Link to="/sessions/$sessionId" params={{ sessionId: session.id }} />}
+      variant="outline"
+      className="bg-card hover:bg-muted/50 block p-4"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="min-w-0 font-medium break-all">{session.title}</h2>
-        <span
-          className={cn(
-            "shrink-0 rounded-md px-2 py-1 text-xs",
-            session.archived ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary",
-          )}
-        >
-          {session.archived ? t.session_status_archived() : t.session_status_active()}
-        </span>
-      </div>
-      <p className="text-muted-foreground mt-1 text-sm break-all">{session.cwd}</p>
-      {session.preview ? (
-        <p className="text-muted-foreground mt-2 line-clamp-1 text-sm">{session.preview}</p>
-      ) : null}
-      <p className="text-muted-foreground mt-3 text-xs">{metaSegments.join(" · ")}</p>
-    </Link>
+      <ItemHeader className="items-start">
+        <ItemTitle className="line-clamp-none min-w-0 flex-1 break-all">{session.title}</ItemTitle>
+        <ItemActions>
+          <Badge
+            variant={session.archived ? "secondary" : "default"}
+            className={cn(
+              "rounded-md",
+              !session.archived && "bg-primary/10 text-primary hover:bg-primary/15",
+            )}
+          >
+            {session.archived ? t.session_status_archived() : t.session_status_active()}
+          </Badge>
+        </ItemActions>
+      </ItemHeader>
+      <ItemContent className="basis-full">
+        <ItemDescription className="line-clamp-none break-all">{session.cwd}</ItemDescription>
+        {session.preview ? (
+          <ItemDescription className="line-clamp-1">{session.preview}</ItemDescription>
+        ) : null}
+      </ItemContent>
+      <ItemFooter className="justify-start">
+        <p className="text-muted-foreground text-xs">{metaSegments.join(" · ")}</p>
+      </ItemFooter>
+    </Item>
   );
 }
 
@@ -568,15 +594,15 @@ function createPaginationItems(
 
 export function SessionsSkeleton() {
   return (
-    <div className="grid gap-3">
+    <ItemGroup className="gap-3">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="bg-card rounded-lg border p-4">
+        <Item key={index} variant="outline" className="bg-card block p-4">
           <Skeleton className="h-4 w-1/3" />
           <Skeleton className="mt-3 h-3 w-2/3" />
           <Skeleton className="mt-3 h-3 w-1/2" />
-        </div>
+        </Item>
       ))}
-    </div>
+    </ItemGroup>
   );
 }
 

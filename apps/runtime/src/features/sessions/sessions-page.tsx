@@ -17,6 +17,7 @@ import {
 import type { SessionListQuery } from "@/features/sessions/model";
 import { useSessionFiltersData, useSessionsData } from "@/features/sessions/use-sessions-data";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
+import { ItemGroup } from "@/ui/components/item";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 20;
@@ -183,9 +184,13 @@ export function SessionsPage() {
             sessionsResponse.data.length === 0 ? (
               <SessionsEmpty message={t.sessions_empty()} />
             ) : null}
-            {sessionsResponse?.data.map((session) => (
-              <SessionCard key={session.id} session={session} />
-            ))}
+            {sessionsResponse && sessionsResponse.data.length > 0 ? (
+              <ItemGroup className="gap-3">
+                {sessionsResponse.data.map((session) => (
+                  <SessionCard key={session.id} session={session} />
+                ))}
+              </ItemGroup>
+            ) : null}
           </div>
 
           {!sessionsQuery.isError && !sessionsQuery.isLoading ? (
