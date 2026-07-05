@@ -5,6 +5,7 @@ import type { SessionListQuery } from "@/features/sessions/model";
 
 type SessionsResponse = InferResponseType<typeof runtimeApiClient.sessions.$get>;
 type SessionsFiltersResponse = InferResponseType<typeof runtimeApiClient.sessions.filters.$get>;
+type OpenDeeplinkResponse = InferResponseType<typeof runtimeApiClient.deeplinks.open.$post>;
 
 export type ReadSessionsQuery = Pick<
   SessionListQuery,
@@ -34,6 +35,14 @@ export function readSessionFilters(
   return readRuntimeApiJson<SessionsFiltersResponse>(
     runtimeApiClient.sessions.filters.$get({
       query: createTimeRangeQueryParams(query),
+    }),
+  );
+}
+
+export async function openDeeplink(href: string): Promise<OpenDeeplinkResponse> {
+  return readRuntimeApiJson<OpenDeeplinkResponse>(
+    runtimeApiClient.deeplinks.open.$post({
+      json: { href },
     }),
   );
 }

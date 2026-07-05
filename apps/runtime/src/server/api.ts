@@ -4,15 +4,22 @@ import { normalizeDashboardRange, readDashboard } from "@/features/dashboard/ser
 import { listSessionFilters, listSessions } from "@/features/sessions/server";
 import { normalizeRuntimeSettingsPatch } from "@/features/settings/model";
 import { createRuntimeSettingsStore } from "@/features/settings/server-store";
+import {
+  type DeeplinkOpener,
+  normalizeCodexDeeplinkHref,
+  openSystemDeeplink,
+} from "@/server/deeplinks";
 
 export type RuntimeApiOptions = {
   codexHome: string;
+  openDeeplink?: DeeplinkOpener;
   startedAt: number;
   version: string;
 };
 
 export function createRuntimeApi(options: RuntimeApiOptions) {
   const settings = createRuntimeSettingsStore(options.codexHome);
+  const openDeeplink = options.openDeeplink ?? openSystemDeeplink;
 
   return new Hono()
     .get("/health", (context) =>
@@ -58,6 +65,24 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
         }),
       ),
     )
+    .post("/deeplinks/open", async (context) => {
+      const rawBody: unknown = await context.req.json().catch(() => ({}));
+      const href = normalizeCodexDeeplinkHref(
+        typeof rawBody === "object" && rawBody ? (rawBody as { href?: unknown }).href : undefined,
+      );
+
+      if (!href) {
+        return context.json({ error: "Invalid deeplink href", ok: false }, 400);
+      }
+
+      try {
+        await openDeeplink(href);
+
+        return context.json({ ok: true }, 202);
+      } catch {
+        return context.json({ error: "Failed to open deeplink", ok: false }, 500);
+      }
+    })
     .get("/settings", async (context) => context.json(await settings.read()))
     .patch("/settings", async (context) => {
       const rawPatch: unknown = await context.req.json().catch(() => ({}));

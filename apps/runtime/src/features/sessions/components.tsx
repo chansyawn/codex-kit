@@ -4,6 +4,7 @@ import { CalendarIcon, ChevronRightIcon, RefreshCwIcon, XIcon } from "lucide-rea
 import { useState, type ReactNode } from "react";
 import type { DateRange } from "react-day-picker";
 
+import { openDeeplink } from "@/features/sessions/client";
 import type {
   SessionFilterOption,
   SessionsFiltersResponse,
@@ -452,6 +453,7 @@ type SessionCardProps = {
 
 export function SessionCard({ session }: SessionCardProps) {
   const { locale, t } = useRuntimeI18n();
+  const [isOpeningInCodex, setIsOpeningInCodex] = useState(false);
   const workspaceName = formatWorkspaceName(session.cwd);
   const metaSegments = [
     workspaceName,
@@ -463,6 +465,17 @@ export function SessionCard({ session }: SessionCardProps) {
     formatActivity(session.lastActivityAt),
     session.archived ? t.session_status_archived() : t.session_status_active(),
   ].filter(Boolean);
+
+  function openSessionInCodex(): void {
+    if (isOpeningInCodex) return;
+
+    setIsOpeningInCodex(true);
+    void openDeeplink(createCodexSessionDeeplink(session.id))
+      .catch(() => undefined)
+      .finally(() => {
+        setIsOpeningInCodex(false);
+      });
+  }
 
   return (
     <Item
@@ -496,9 +509,10 @@ export function SessionCard({ session }: SessionCardProps) {
             <TooltipTrigger
               render={
                 <Button
-                  render={<a href={createCodexSessionDeeplink(session.id)} />}
                   variant="ghost"
                   size="icon-sm"
+                  disabled={isOpeningInCodex}
+                  onClick={openSessionInCodex}
                   aria-label={t.session_action_open_in_codex()}
                 >
                   <Codex.Color aria-hidden="true" size={16} />
