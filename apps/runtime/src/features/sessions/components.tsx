@@ -37,6 +37,7 @@ import {
 } from "@/ui/components/pagination";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/components/popover";
 import { Skeleton } from "@/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/components/tooltip";
 import { formatCompactNumber, formatIntegerNumber } from "@/ui/lib/number-format";
 import { cn } from "@/ui/lib/utils";
 
@@ -435,47 +436,57 @@ function formatActivity(iso: string): string {
   return iso ? new Date(iso).toLocaleString() : "—";
 }
 
+function formatWorkspaceName(cwd: string): string {
+  const normalizedCwd = cwd.replace(/[\\/]+$/, "");
+  const workspaceName = normalizedCwd.split(/[\\/]/).filter(Boolean).at(-1);
+
+  return workspaceName || cwd;
+}
+
 type SessionCardProps = {
   session: SessionSummary;
 };
 
 export function SessionCard({ session }: SessionCardProps) {
   const { locale, t } = useRuntimeI18n();
+  const workspaceName = formatWorkspaceName(session.cwd);
   const metaSegments = [
     session.model ? `${session.model}·${session.modelProvider}` : session.modelProvider,
     session.tokensUsed > 0
       ? `${formatCompactNumber(session.tokensUsed, locale)} ${t.session_tokens_label()}`
       : "",
     formatActivity(session.lastActivityAt),
+    session.archived ? t.session_status_archived() : t.session_status_active(),
   ].filter(Boolean);
 
   return (
     <Item
       render={<Link to="/sessions/$sessionId" params={{ sessionId: session.id }} />}
       variant="outline"
-      className="bg-card hover:bg-muted/50 block p-4"
     >
-      <ItemHeader className="items-start">
+      <ItemHeader>
         <ItemTitle className="line-clamp-none min-w-0 flex-1 break-all">{session.title}</ItemTitle>
         <ItemActions>
-          <Badge
-            variant={session.archived ? "secondary" : "default"}
-            className={cn(
-              "rounded-md",
-              !session.archived && "bg-primary/10 text-primary hover:bg-primary/15",
-            )}
-          >
-            {session.archived ? t.session_status_archived() : t.session_status_active()}
-          </Badge>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="inline-flex max-w-40" title={session.cwd}>
+                  <Badge variant="secondary" className="max-w-full rounded-md">
+                    <span className="truncate">{workspaceName}</span>
+                  </Badge>
+                </span>
+              }
+            />
+            <TooltipContent>{session.cwd}</TooltipContent>
+          </Tooltip>
         </ItemActions>
       </ItemHeader>
-      <ItemContent className="basis-full">
-        <ItemDescription className="line-clamp-none break-all">{session.cwd}</ItemDescription>
+      <ItemContent>
         {session.preview ? (
           <ItemDescription className="line-clamp-1">{session.preview}</ItemDescription>
         ) : null}
       </ItemContent>
-      <ItemFooter className="justify-start">
+      <ItemFooter>
         <p className="text-muted-foreground text-xs">{metaSegments.join(" · ")}</p>
       </ItemFooter>
     </Item>
