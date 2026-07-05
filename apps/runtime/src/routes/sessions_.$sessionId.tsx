@@ -5,5 +5,5 @@ export const Route = createFileRoute("/sessions_/$sessionId")({
 });
 
 function SessionPage() {
-  return null;
+  return <section aria-hidden="true" className="hidden" />;
 }

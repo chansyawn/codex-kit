@@ -65,6 +65,7 @@
   "session_status_active": "Active",
   "session_status_archived": "Archived",
   "sessions_empty": "No sessions yet.",
+  "session_action_open_in_codex": "Open in Codex",
   "session_model_label": "Model",
   "session_tokens_label": "Tokens"
 }

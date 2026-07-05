@@ -65,6 +65,7 @@
   "session_status_active": "活跃",
   "session_status_archived": "已归档",
   "sessions_empty": "暂无会话。",
+  "session_action_open_in_codex": "在 Codex 中打开",
   "session_model_label": "模型",
   "session_tokens_label": "Token"
 }

@@ -1,5 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarIcon, ChevronRightIcon, RefreshCwIcon, XIcon } from "lucide-react";
+import {
+  CalendarIcon,
+  ChevronRightIcon,
+  ExternalLinkIcon,
+  RefreshCwIcon,
+  XIcon,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { DateRange } from "react-day-picker";
 
@@ -9,6 +15,7 @@ import type {
   SessionsResponse,
   SessionSummary,
 } from "@/features/sessions/model";
+import { createCodexSessionDeeplink } from "@/features/sessions/session-links";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Badge } from "@/ui/components/badge";
 import { Button } from "@/ui/components/button";
@@ -451,6 +458,7 @@ export function SessionCard({ session }: SessionCardProps) {
   const { locale, t } = useRuntimeI18n();
   const workspaceName = formatWorkspaceName(session.cwd);
   const metaSegments = [
+    workspaceName,
     session.model,
     session.modelProvider,
     session.tokensUsed > 0
@@ -461,35 +469,45 @@ export function SessionCard({ session }: SessionCardProps) {
   ].filter(Boolean);
 
   return (
-    <Item
-      render={<Link to="/sessions/$sessionId" params={{ sessionId: session.id }} />}
-      variant="outline"
-    >
-      <ItemHeader className="items-baseline">
-        <ItemTitle className="line-clamp-none min-w-0 flex-1 break-all">{session.title}</ItemTitle>
-        <ItemActions className="self-baseline">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <span className="inline-flex max-w-40" title={session.cwd}>
-                  <Badge variant="secondary" className="max-w-full rounded-md">
-                    <span className="truncate">{workspaceName}</span>
-                  </Badge>
-                </span>
-              }
-            />
-            <TooltipContent>{session.cwd}</TooltipContent>
-          </Tooltip>
-        </ItemActions>
-      </ItemHeader>
-      <ItemContent>
-        {session.preview ? (
-          <ItemDescription className="line-clamp-1">{session.preview}</ItemDescription>
-        ) : null}
-      </ItemContent>
-      <ItemFooter>
-        <p className="text-muted-foreground text-xs">{metaSegments.join(" · ")}</p>
-      </ItemFooter>
+    <Item variant="outline" className="hover:bg-muted relative pe-14">
+      <Link
+        to="/sessions/$sessionId"
+        params={{ sessionId: session.id }}
+        className="absolute inset-0 z-0 rounded-lg"
+        aria-label={session.title}
+      />
+      <div className="pointer-events-none relative z-10 contents">
+        <ItemHeader className="items-baseline">
+          <ItemTitle className="line-clamp-none min-w-0 flex-1 break-all">
+            {session.title}
+          </ItemTitle>
+        </ItemHeader>
+        <ItemContent>
+          {session.preview ? (
+            <ItemDescription className="line-clamp-1">{session.preview}</ItemDescription>
+          ) : null}
+        </ItemContent>
+        <ItemFooter>
+          <p className="text-muted-foreground text-xs">{metaSegments.join(" · ")}</p>
+        </ItemFooter>
+      </div>
+      <ItemActions className="pointer-events-auto absolute inset-e-3 top-2.5 z-20">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                render={<a href={createCodexSessionDeeplink(session.id)} />}
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t.session_action_open_in_codex()}
+              >
+                <ExternalLinkIcon aria-hidden="true" />
+              </Button>
+            }
+          />
+          <TooltipContent>{t.session_action_open_in_codex()}</TooltipContent>
+        </Tooltip>
+      </ItemActions>
     </Item>
   );
 }
