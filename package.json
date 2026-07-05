@@ -10,7 +10,8 @@
     "build": "vp run -r build",
     "ready": "vp run check && vp run test && vp run build",
     "dev": "vp dev apps/runtime",
-    "cli": "vp run @codexkit/cli#cli"
+    "desktop": "vp run @codexkit/desktop#dev",
+    "desktop:build": "vp run @codexkit/desktop#build"
   },
   "devDependencies": {
     "vite-plus": "catalog:"

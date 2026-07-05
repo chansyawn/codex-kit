@@ -2,7 +2,5 @@
   "id": "codexkit",
   "name": "CodexKit",
   "version": "0.0.0",
-  "description": "Non-invasive Codex extension shell that delegates runtime work to npx @codexkit/cli.",
-  "hooks": "../hooks/hooks.json",
-  "skills": "../skills"
+  "description": "Empty CodexKit plugin shell."
 }

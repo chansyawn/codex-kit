@@ -1,7 +1,0 @@
-{
-  "SessionStart": [
-    {
-      "command": "npx -y @codexkit/cli open"
-    }
-  ]
-}

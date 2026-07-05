@@ -7,7 +7,7 @@ import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
-import { type ConfigEnv, defineConfig, lazyPlugins } from "vite-plus";
+import { type ConfigEnv, defineConfig, lazyPlugins, type PluginOption } from "vite-plus";
 
 import { paraglideConfig, runtimeRoot } from "./paraglide.config.ts";
 
@@ -23,6 +23,32 @@ const commonConfig = {
   },
 };
 
+function createServerPlugins(): PluginOption[] {
+  return [
+    build({
+      entry: "./src/server/entry.ts",
+      output: "index.js",
+      outputDir: "./dist/server",
+      ssrTarget: "node",
+    }) as PluginOption,
+  ];
+}
+
+async function createClientPlugins(): Promise<PluginOption[]> {
+  return [
+    devServer({
+      entry: "./src/server/entry.ts",
+      exclude: [/^[^?]*\.[a-zA-Z0-9]+(?:\?.*)?$/, ...defaultOptions.exclude],
+      injectClientScript: false,
+      adapter: nodeAdapter(),
+    }) as PluginOption,
+    tanstackRouter({ target: "react" }) as PluginOption,
+    paraglideVitePlugin(paraglideConfig) as PluginOption,
+    react() as PluginOption,
+    tailwindcss() as PluginOption,
+  ];
+}
+
 export default defineConfig(({ mode }: ConfigEnv) => {
   if (mode === "server") {
     return {
@@ -30,14 +56,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       build: {
         copyPublicDir: false,
       },
-      plugins: lazyPlugins(() => [
-        build({
-          entry: "./src/server/entry.ts",
-          output: "index.js",
-          outputDir: "./dist/server",
-          ssrTarget: "node",
-        }),
-      ]),
+      plugins: lazyPlugins(createServerPlugins),
     };
   }
 
@@ -49,17 +68,6 @@ export default defineConfig(({ mode }: ConfigEnv) => {
     build: {
       outDir: "dist/client",
     },
-    plugins: lazyPlugins(async () => [
-      devServer({
-        entry: "./src/server/entry.ts",
-        exclude: [/^[^?]*\.[a-zA-Z0-9]+(?:\?.*)?$/, ...defaultOptions.exclude],
-        injectClientScript: false,
-        adapter: nodeAdapter(),
-      }),
-      tanstackRouter({ target: "react" }),
-      paraglideVitePlugin(paraglideConfig),
-      react(),
-      tailwindcss(),
-    ]),
+    plugins: lazyPlugins(createClientPlugins),
   };
 });

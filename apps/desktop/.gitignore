@@ -10,15 +10,11 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-packages/cli/runtime
-apps/desktop/.cache
-apps/desktop/dist-node
-apps/desktop/src-tauri/binaries/node-*
-apps/desktop/src-tauri/resources/codexkit
 *.local
 
 # Editor directories and files
 .vscode/*
+!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
