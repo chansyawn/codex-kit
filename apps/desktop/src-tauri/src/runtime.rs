@@ -12,7 +12,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use tauri::{path::BaseDirectory, AppHandle, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_shell::{
     process::{CommandChild, CommandEvent},
@@ -121,18 +121,15 @@ pub fn stop_owned(app: &AppHandle) {
 fn start_sidecar(app: &AppHandle, process: &mut RuntimeProcess) -> Result<RuntimeState> {
     let codex_home = codex_home();
     let state_path = runtime_state_path(&codex_home);
-    let runner_path = resource_path(app, "codexkit/runner/runtime-sidecar.mjs")?;
-    let server_path = resource_path(app, "codexkit/server/index.js")?;
-    let client_path = resource_path(app, "codexkit/client")?;
-    let args = sidecar_args(&runner_path, &server_path, &client_path, &codex_home, &state_path);
+    let args = sidecar_args(&codex_home, &state_path);
     let (mut rx, child) = app
         .shell()
-        .sidecar("node")
-        .map_err(|error| format!("failed to resolve Node sidecar: {error}"))?
+        .sidecar("codexkit-runtime")
+        .map_err(|error| format!("failed to resolve CodexKit runtime sidecar: {error}"))?
         .args(args)
         .env("CODEX_HOME", &codex_home)
         .spawn()
-        .map_err(|error| format!("failed to start Node sidecar: {error}"))?;
+        .map_err(|error| format!("failed to start CodexKit runtime sidecar: {error}"))?;
     let pid = child.pid();
 
     tauri::async_runtime::spawn(async move {
@@ -166,19 +163,8 @@ fn start_sidecar(app: &AppHandle, process: &mut RuntimeProcess) -> Result<Runtim
     Ok(state)
 }
 
-fn sidecar_args(
-    runner_path: &Path,
-    server_path: &Path,
-    client_path: &Path,
-    codex_home: &Path,
-    state_path: &Path,
-) -> Vec<OsString> {
+fn sidecar_args(codex_home: &Path, state_path: &Path) -> Vec<OsString> {
     vec![
-        runner_path.as_os_str().to_os_string(),
-        "--server".into(),
-        server_path.as_os_str().to_os_string(),
-        "--client".into(),
-        client_path.as_os_str().to_os_string(),
         "--codex-home".into(),
         codex_home.as_os_str().to_os_string(),
         "--state-file".into(),
@@ -186,12 +172,6 @@ fn sidecar_args(
         "--version".into(),
         env!("CARGO_PKG_VERSION").into(),
     ]
-}
-
-fn resource_path(app: &AppHandle, path: &str) -> Result<PathBuf> {
-    app.path()
-        .resolve(path, BaseDirectory::Resource)
-        .map_err(|error| format!("failed to resolve resource {path}: {error}"))
 }
 
 fn wait_for_state(state_path: &Path) -> Result<RuntimeState> {

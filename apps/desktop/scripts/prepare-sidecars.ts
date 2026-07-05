@@ -1,80 +1,29 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { constants } from "node:fs";
-import { access, chmod, copyFile, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { chmod, cp, mkdir, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const NODE_VERSION = "24.18.0";
 const desktopRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const workspaceRoot = resolve(desktopRoot, "../..");
 const tauriRoot = join(desktopRoot, "src-tauri");
 const binariesRoot = join(tauriRoot, "binaries");
-const resourcesRoot = join(tauriRoot, "resources", "codexkit");
-const cacheRoot = join(desktopRoot, ".cache", "sidecars");
+const stagingRoot = join(desktopRoot, "dist-pkg");
+const staleResourcesRoot = join(tauriRoot, "resources", "codexkit");
+const staleNodeSidecarPrefix = join(binariesRoot, "node-");
 
-type NodeAsset = {
-  archivePath: string;
-  executablePath: string;
-  filename: string;
-  sidecarExtension: string;
+type PkgTarget = {
+  executableExtension: string;
+  pkgTarget: string;
 };
 
-const assetByTarget = new Map<string, NodeAsset>([
-  [
-    "aarch64-apple-darwin",
-    {
-      archivePath: "node-v24.18.0-darwin-arm64/bin/node",
-      executablePath: "node-v24.18.0-darwin-arm64/bin/node",
-      filename: "node-v24.18.0-darwin-arm64.tar.gz",
-      sidecarExtension: "",
-    },
-  ],
-  [
-    "x86_64-apple-darwin",
-    {
-      archivePath: "node-v24.18.0-darwin-x64/bin/node",
-      executablePath: "node-v24.18.0-darwin-x64/bin/node",
-      filename: "node-v24.18.0-darwin-x64.tar.gz",
-      sidecarExtension: "",
-    },
-  ],
-  [
-    "x86_64-pc-windows-msvc",
-    {
-      archivePath: "node-v24.18.0-win-x64/node.exe",
-      executablePath: "node-v24.18.0-win-x64/node.exe",
-      filename: "node-v24.18.0-win-x64.zip",
-      sidecarExtension: ".exe",
-    },
-  ],
-  [
-    "aarch64-pc-windows-msvc",
-    {
-      archivePath: "node-v24.18.0-win-arm64/node.exe",
-      executablePath: "node-v24.18.0-win-arm64/node.exe",
-      filename: "node-v24.18.0-win-arm64.zip",
-      sidecarExtension: ".exe",
-    },
-  ],
-  [
-    "x86_64-unknown-linux-gnu",
-    {
-      archivePath: "node-v24.18.0-linux-x64/bin/node",
-      executablePath: "node-v24.18.0-linux-x64/bin/node",
-      filename: "node-v24.18.0-linux-x64.tar.xz",
-      sidecarExtension: "",
-    },
-  ],
-  [
-    "aarch64-unknown-linux-gnu",
-    {
-      archivePath: "node-v24.18.0-linux-arm64/bin/node",
-      executablePath: "node-v24.18.0-linux-arm64/bin/node",
-      filename: "node-v24.18.0-linux-arm64.tar.xz",
-      sidecarExtension: "",
-    },
-  ],
+const pkgTargetByRustTarget = new Map<string, PkgTarget>([
+  ["aarch64-apple-darwin", { executableExtension: "", pkgTarget: "node24-macos-arm64" }],
+  ["x86_64-apple-darwin", { executableExtension: "", pkgTarget: "node24-macos-x64" }],
+  ["x86_64-pc-windows-msvc", { executableExtension: ".exe", pkgTarget: "node24-win-x64" }],
+  ["aarch64-pc-windows-msvc", { executableExtension: ".exe", pkgTarget: "node24-win-arm64" }],
+  ["x86_64-unknown-linux-gnu", { executableExtension: "", pkgTarget: "node24-linux-x64" }],
+  ["aarch64-unknown-linux-gnu", { executableExtension: "", pkgTarget: "node24-linux-arm64" }],
 ]);
 
 await main();
@@ -85,141 +34,85 @@ async function main(): Promise<void> {
   run("vp", ["build", "--mode", "client"], runtimeRoot);
   run("vp", ["build", "--mode", "server"], runtimeRoot);
   run("vp", ["pack"], desktopRoot);
-  await copyRuntimeResources();
-  await prepareNodeSidecar();
+
+  await stagePackageInput();
+  await preparePkgSidecar();
+  await removeStaleRuntimeResources();
 }
 
-async function copyRuntimeResources(): Promise<void> {
-  await rm(resourcesRoot, { force: true, recursive: true });
-  await mkdir(resourcesRoot, { recursive: true });
-  await cp(join(workspaceRoot, "apps/runtime/dist/server"), join(resourcesRoot, "server"), {
+async function stagePackageInput(): Promise<void> {
+  await rm(stagingRoot, { force: true, recursive: true });
+  await mkdir(stagingRoot, { recursive: true });
+  await cp(join(workspaceRoot, "apps/runtime/dist/server"), join(stagingRoot, "server"), {
     recursive: true,
   });
-  await cp(join(workspaceRoot, "apps/runtime/dist/client"), join(resourcesRoot, "client"), {
+  await cp(join(workspaceRoot, "apps/runtime/dist/client"), join(stagingRoot, "client"), {
     recursive: true,
   });
-  await cp(join(desktopRoot, "dist-node"), join(resourcesRoot, "runner"), { recursive: true });
+  await cp(join(desktopRoot, "dist-node"), join(stagingRoot, "runner"), { recursive: true });
 }
 
-async function prepareNodeSidecar(): Promise<void> {
+async function preparePkgSidecar(): Promise<void> {
   const targetTriple = getTargetTriple();
-  const asset = assetByTarget.get(targetTriple);
+  const target = pkgTargetByRustTarget.get(targetTriple);
 
-  if (!asset) {
-    throw new Error(`No bundled Node.js sidecar asset is configured for ${targetTriple}.`);
-  }
-
-  const sidecarPath = join(binariesRoot, `node-${targetTriple}${asset.sidecarExtension}`);
-
-  if (await exists(sidecarPath)) {
-    return;
+  if (!target) {
+    throw new Error(`No @yao-pkg/pkg target is configured for ${targetTriple}.`);
   }
 
   await mkdir(binariesRoot, { recursive: true });
-  await mkdir(cacheRoot, { recursive: true });
 
-  const archivePath = join(cacheRoot, asset.filename);
-  await downloadAndVerify(asset.filename, archivePath);
+  const sidecarPath = join(
+    binariesRoot,
+    `codexkit-runtime-${targetTriple}${target.executableExtension}`,
+  );
+  await rm(sidecarPath, { force: true });
 
-  const extractRoot = join(cacheRoot, basename(asset.filename).replace(/\.tar\..+|\.zip$/u, ""));
-  await rm(extractRoot, { force: true, recursive: true });
-  await mkdir(extractRoot, { recursive: true });
-  await extractArchive(archivePath, extractRoot, asset);
-  await copyFile(join(extractRoot, asset.executablePath), sidecarPath);
+  run("vp", [
+    "exec",
+    "pkg",
+    findRunnerEntrypoint(),
+    "--config",
+    "pkg.config.cjs",
+    "--targets",
+    target.pkgTarget,
+    "--output",
+    sidecarPath,
+  ]);
 
   if (process.platform !== "win32") {
     await chmod(sidecarPath, 0o755);
   }
 }
 
-async function downloadAndVerify(filename: string, destination: string): Promise<void> {
-  if (!(await exists(destination))) {
-    await downloadFile(nodeDownloadUrl(filename), destination);
-  }
+async function removeStaleRuntimeResources(): Promise<void> {
+  await rm(staleResourcesRoot, { force: true, recursive: true });
 
-  const checksumText = await downloadText(nodeDownloadUrl("SHASUMS256.txt"));
-  const expected = parseChecksum(checksumText, filename);
-  const actual = createHash("sha256")
-    .update(await readFile(destination))
-    .digest("hex");
-
-  if (actual !== expected) {
-    await rm(destination, { force: true });
-    throw new Error(`Checksum mismatch for ${filename}.`);
+  for (const targetTriple of pkgTargetByRustTarget.keys()) {
+    await rm(`${staleNodeSidecarPrefix}${targetTriple}`, { force: true });
+    await rm(`${staleNodeSidecarPrefix}${targetTriple}.exe`, { force: true });
   }
 }
 
-async function downloadFile(url: string, destination: string): Promise<void> {
-  const response = await fetch(url);
+function findRunnerEntrypoint(): string {
+  const candidates = [
+    join(stagingRoot, "runner", "runtime-sidecar.cjs"),
+    join(stagingRoot, "runner", "runtime-sidecar.js"),
+    join(stagingRoot, "runner", "runtime-sidecar.mjs"),
+  ];
+  const runnerPath = candidates.find(existsSync);
 
-  if (!response.ok) {
-    throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
+  if (!runnerPath) {
+    throw new Error("Unable to find the built CodexKit runtime sidecar entrypoint.");
   }
 
-  await writeFile(destination, new Uint8Array(await response.arrayBuffer()));
-}
-
-async function downloadText(url: string): Promise<string> {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
-  }
-
-  return response.text();
-}
-
-function parseChecksum(checksumText: string, filename: string): string {
-  for (const line of checksumText.split("\n")) {
-    const [checksum, lineFilename] = line.trim().split(/\s+/u);
-
-    if (lineFilename === filename && checksum) {
-      return checksum;
-    }
-  }
-
-  throw new Error(`Unable to find checksum for ${filename}.`);
-}
-
-async function extractArchive(
-  archivePath: string,
-  extractRoot: string,
-  asset: NodeAsset,
-): Promise<void> {
-  if (asset.filename.endsWith(".zip")) {
-    if (process.platform === "win32") {
-      run("powershell", [
-        "-NoProfile",
-        "-Command",
-        `Expand-Archive -Force ${JSON.stringify(archivePath)} ${JSON.stringify(extractRoot)}`,
-      ]);
-      return;
-    }
-
-    run("unzip", ["-q", archivePath, asset.archivePath, "-d", extractRoot]);
-    return;
-  }
-
-  run("tar", ["-xf", archivePath, "-C", extractRoot, asset.archivePath]);
+  return runnerPath;
 }
 
 function getTargetTriple(): string {
   return execFileSync("rustc", ["--print", "host-tuple"], {
     encoding: "utf8",
   }).trim();
-}
-
-function nodeDownloadUrl(filename: string): string {
-  return `https://nodejs.org/dist/v${NODE_VERSION}/${filename}`;
-}
-
-async function exists(path: string): Promise<boolean> {
-  try {
-    await access(path, constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function run(command: string, args: string[], cwd = desktopRoot): void {

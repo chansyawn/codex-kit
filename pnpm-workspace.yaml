@@ -3,6 +3,9 @@ packages:
   - packages/*
   - tools/*
 
+allowBuilds:
+  esbuild: true
+
 catalog:
   "@hono/node-server": ^1.19.7
   "@types/node": ^24

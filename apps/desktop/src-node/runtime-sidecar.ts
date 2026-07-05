@@ -1,10 +1,14 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { dirname } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const DEFAULT_HOST = "127.0.0.1";
+const SNAPSHOT_ROOT = resolve(currentDirectory(), "..");
+const SERVER_PATH = join(SNAPSHOT_ROOT, "server", "index.js");
+const CLIENT_PATH = join(SNAPSHOT_ROOT, "client");
 
 type RuntimeApp = {
   fetch: (request: Request) => Promise<Response> | Response;
@@ -21,9 +25,7 @@ type RuntimeModule = {
 };
 
 type SidecarOptions = {
-  clientPath: string;
   codexHome: string;
-  serverPath: string;
   stateFile: string;
   version: string;
 };
@@ -37,30 +39,40 @@ type RuntimeState = {
 
 const options = parseOptions(process.argv.slice(2));
 const startedAt = Date.now();
-const app = await createRuntimeApp(options, startedAt);
-const server = createServer((request, response) => {
-  void handleRequest(app, request, response);
-});
+let server: ReturnType<typeof createServer> | undefined;
 
-server.listen(0, DEFAULT_HOST, () => {
-  const address = server.address();
-
-  if (!address || typeof address === "string") {
-    throw new Error("CodexKit runtime did not receive a TCP address.");
-  }
-
-  const state: RuntimeState = {
-    host: DEFAULT_HOST,
-    pid: process.pid,
-    port: address.port,
-    startedAt: new Date(startedAt).toISOString(),
-  };
-
-  void writeRuntimeState(options.stateFile, state);
+void main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
 });
 
 process.once("SIGINT", close);
 process.once("SIGTERM", close);
+
+async function main(): Promise<void> {
+  const app = await createRuntimeApp(options, startedAt);
+
+  server = createServer((request, response) => {
+    void handleRequest(app, request, response);
+  });
+
+  server.listen(0, DEFAULT_HOST, () => {
+    const address = server?.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("CodexKit runtime did not receive a TCP address.");
+    }
+
+    const state: RuntimeState = {
+      host: DEFAULT_HOST,
+      pid: process.pid,
+      port: address.port,
+      startedAt: new Date(startedAt).toISOString(),
+    };
+
+    void writeRuntimeState(options.stateFile, state);
+  });
+}
 
 function parseOptions(args: string[]): SidecarOptions {
   const values = new Map<string, string>();
@@ -77,9 +89,7 @@ function parseOptions(args: string[]): SidecarOptions {
   }
 
   return {
-    clientPath: requireOption(values, "client"),
     codexHome: requireOption(values, "codex-home"),
-    serverPath: requireOption(values, "server"),
     stateFile: requireOption(values, "state-file"),
     version: requireOption(values, "version"),
   };
@@ -98,15 +108,15 @@ function requireOption(values: Map<string, string>, key: string): string {
 async function createRuntimeApp(options: SidecarOptions, startedAt: number): Promise<RuntimeApp> {
   process.env.CODEXKIT_CODEX_HOME = options.codexHome;
   process.env.CODEXKIT_STARTED_AT = String(startedAt);
-  process.env.CODEXKIT_STATIC_ROOT = options.clientPath;
+  process.env.CODEXKIT_STATIC_ROOT = CLIENT_PATH;
   process.env.CODEXKIT_VERSION = options.version;
 
-  const runtimeModule = (await import(pathToFileURL(options.serverPath).href)) as RuntimeModule;
+  const runtimeModule = createRequire(pathToFileURL(SERVER_PATH))(SERVER_PATH) as RuntimeModule;
   const app =
     runtimeModule.createRuntimeApp?.({
       codexHome: options.codexHome,
       startedAt,
-      staticRoot: options.clientPath,
+      staticRoot: CLIENT_PATH,
       version: options.version,
     }) ?? runtimeModule.default;
 
@@ -199,7 +209,19 @@ async function writeRuntimeState(path: string, state: RuntimeState): Promise<voi
   await writeFile(path, `${JSON.stringify(state, null, 2)}\n`);
 }
 
+function currentDirectory(): string {
+  if (typeof __dirname === "string") {
+    return __dirname;
+  }
+
+  return dirname(fileURLToPath(import.meta.url));
+}
+
 function close(): void {
+  if (!server) {
+    process.exit(0);
+  }
+
   server.close(() => {
     void rm(options.stateFile, { force: true }).finally(() => {
       process.exit(0);
