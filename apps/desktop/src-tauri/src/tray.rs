@@ -12,13 +12,8 @@ const STOP_SERVICE_ID: &str = "stop-service";
 const QUIT_ID: &str = "quit";
 
 pub fn create_tray(app: &App) -> tauri::Result<()> {
-    let open_dashboard = MenuItem::with_id(
-        app,
-        OPEN_DASHBOARD_ID,
-        "Open Dashboard",
-        true,
-        None::<&str>,
-    )?;
+    let open_dashboard =
+        MenuItem::with_id(app, OPEN_DASHBOARD_ID, "Open Dashboard", true, None::<&str>)?;
     let restart_service = MenuItem::with_id(
         app,
         RESTART_SERVICE_ID,
@@ -26,8 +21,7 @@ pub fn create_tray(app: &App) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
-    let stop_service =
-        MenuItem::with_id(app, STOP_SERVICE_ID, "Stop Service", true, None::<&str>)?;
+    let stop_service = MenuItem::with_id(app, STOP_SERVICE_ID, "Stop Service", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, QUIT_ID, "Quit CodexKit", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(
@@ -68,10 +62,7 @@ pub fn create_tray(app: &App) -> tauri::Result<()> {
                     ..
                 }
             ) {
-                report(
-                    "open dashboard",
-                    runtime::open_dashboard(tray.app_handle()),
-                );
+                report("open dashboard", runtime::open_dashboard(tray.app_handle()));
             }
         })
         .build(app)?;
