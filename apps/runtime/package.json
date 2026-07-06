@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "vp dev",
     "build": "vp build --mode client && vp build --mode server",
-    "check": "vp run paraglide:compile && vp check",
-    "test": "vp run paraglide:compile && vp test --passWithNoTests",
-    "paraglide:compile": "node --experimental-strip-types ./scripts/compile-paraglide.ts",
+    "check": "vp run i18n:paraglide && vp check",
+    "test": "vp run i18n:paraglide && vp test --passWithNoTests",
+    "i18n:paraglide": "node --experimental-strip-types ./scripts/compile-paraglide.ts",
     "preview": "vp preview"
   },
   "dependencies": {

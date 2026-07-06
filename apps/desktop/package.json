@@ -6,8 +6,6 @@
   "scripts": {
     "build": "tauri build",
     "dev": "tauri dev",
-    "desktop:prepare": "node --experimental-strip-types ./scripts/prepare-sidecars.ts",
-    "runner:build": "vp pack",
     "tauri": "tauri"
   },
   "dependencies": {

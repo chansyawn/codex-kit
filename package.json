@@ -4,14 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "vp config",
+    "prepare": "vp config",
     "check": "vp check",
     "test": "vp run -r test",
-    "build": "vp run -r build",
-    "ready": "vp run check && vp run test && vp run build",
-    "dev": "vp dev apps/runtime",
-    "desktop": "vp run @codexkit/desktop#dev",
-    "desktop:build": "vp run @codexkit/desktop#build"
+    "dev": "vp run @codexkit/desktop#dev"
   },
   "devDependencies": {
     "vite-plus": "catalog:"
