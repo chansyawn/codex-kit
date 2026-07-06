@@ -1,22 +1,14 @@
-import {
-  BoxesIcon,
-  FileCogIcon,
-  Settings2Icon,
-  TerminalSquareIcon,
-  type LucideIcon,
-} from "lucide-react";
+import { BoxesIcon, FileCogIcon, TerminalSquareIcon, type LucideIcon } from "lucide-react";
 
 type NavigationLabelKey =
   | "dashboard_nav_config"
   | "dashboard_nav_dashboard"
-  | "dashboard_nav_sessions"
-  | "dashboard_nav_settings";
+  | "dashboard_nav_sessions";
 
 export const routeLabelKeys = {
   "/": "dashboard_nav_dashboard",
   "/config": "dashboard_nav_config",
   "/sessions": "dashboard_nav_sessions",
-  "/settings": "dashboard_nav_settings",
 } as const;
 
 export type RuntimePath = keyof typeof routeLabelKeys;
@@ -42,11 +34,6 @@ export const mainNavItems: MainNavItem[] = [
     icon: FileCogIcon,
     labelKey: "dashboard_nav_config",
     to: "/config",
-  },
-  {
-    icon: Settings2Icon,
-    labelKey: "dashboard_nav_settings",
-    to: "/settings",
   },
 ];
 

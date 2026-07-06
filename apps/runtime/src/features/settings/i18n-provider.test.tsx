@@ -73,12 +73,12 @@ describe("RuntimeI18nProvider", () => {
       </RuntimeI18nProvider>,
     );
 
-    expect(rendered.container.textContent).toContain("Settings");
+    expect(rendered.container.textContent).toContain("Dashboard");
 
     await click(rendered.container.querySelector("button"));
-    await waitForText(rendered.container, "设置");
+    await waitForText(rendered.container, "仪表盘");
 
-    expect(rendered.container.textContent).toContain("设置");
+    expect(rendered.container.textContent).toContain("仪表盘");
     expect(mockedParaglideRuntime.setLocale).toHaveBeenLastCalledWith("zh-CN", {
       reload: false,
     });
@@ -92,7 +92,7 @@ function TranslatedProbe() {
 
   return (
     <button type="button" onClick={() => setLocalePreference("zh-CN")}>
-      {t.dashboard_nav_settings()}
+      {t.dashboard_nav_dashboard()}
     </button>
   );
 }
