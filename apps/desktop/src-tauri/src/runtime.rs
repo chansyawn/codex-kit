@@ -1,27 +1,20 @@
+mod launch;
+
 use std::{
     env, fs,
     io::{Read, Write},
     net::{SocketAddr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
+    process::Command as StdCommand,
     sync::Mutex,
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
-use tauri_plugin_shell::process::CommandChild;
-
-#[cfg(debug_assertions)]
-mod dev;
-#[cfg(not(debug_assertions))]
-mod sidecar;
-
-#[cfg(debug_assertions)]
-use dev as backend;
-#[cfg(not(debug_assertions))]
-use sidecar as backend;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 
 const ENSURE_TIMEOUT: Duration = Duration::from_secs(8);
 const POLL_INTERVAL: Duration = Duration::from_millis(100);
@@ -61,11 +54,7 @@ pub fn ensure_started(app: &AppHandle) -> Result<RuntimeState> {
         .lock()
         .map_err(|_| "runtime service lock is poisoned".to_string())?;
 
-    if let Some(state) = process.state.as_ref().filter(|state| is_healthy(state)) {
-        return Ok(state.clone());
-    }
-
-    backend::start(app, &mut process)
+    ensure_started_locked(app, &mut process)
 }
 
 pub fn open_dashboard(app: &AppHandle) -> Result<()> {
@@ -89,7 +78,7 @@ pub fn stop(app: &AppHandle) -> Result<()> {
         .lock()
         .map_err(|_| "runtime service lock is poisoned".to_string())?;
 
-    backend::stop(&mut process)
+    stop_runtime(&mut process)
 }
 
 pub fn stop_owned(app: &AppHandle) {
@@ -98,12 +87,125 @@ pub fn stop_owned(app: &AppHandle) {
         return;
     };
 
+    let _ = stop_runtime(&mut process);
+}
+
+fn ensure_started_locked(app: &AppHandle, process: &mut RuntimeProcess) -> Result<RuntimeState> {
+    if let Some(state) = process.state.as_ref().filter(|state| is_healthy(state)) {
+        return Ok(state.clone());
+    }
+
+    if let Some(state) = read_state().filter(is_healthy) {
+        process.state = Some(state.clone());
+        return Ok(state);
+    }
+
+    remove_state_file();
+    start_runtime(app, process)
+}
+
+fn start_runtime(app: &AppHandle, process: &mut RuntimeProcess) -> Result<RuntimeState> {
+    let codex_home = codex_home();
+    let state_path = runtime_state_path(&codex_home);
+    let launch = launch::create(app, &codex_home, &state_path)?;
+    let label = launch.label;
+    let (mut rx, child) = launch
+        .command
+        .spawn()
+        .map_err(|error| format!("failed to start CodexKit {label}: {error}"))?;
+    let pid = child.pid();
+
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(bytes) => log_runtime_output(label, "stdout", &bytes),
+                CommandEvent::Stderr(bytes) => log_runtime_output(label, "stderr", &bytes),
+                CommandEvent::Error(error) => eprintln!("CodexKit {label} error: {error}"),
+                CommandEvent::Terminated(payload) => {
+                    eprintln!(
+                        "CodexKit {label} terminated: code={:?} signal={:?}",
+                        payload.code, payload.signal
+                    );
+                }
+                _ => {}
+            }
+        }
+    });
+
+    process.child = Some(child);
+
+    if let Some(state) = launch.expected_state.map(|state| state.into_state(pid)) {
+        if let Err(error) = write_state(&state_path, &state) {
+            if let Some(child) = process.child.take() {
+                let _ = child.kill();
+            }
+
+            remove_state_file();
+            return Err(error);
+        }
+    }
+
+    match wait_for_state(&state_path) {
+        Ok(state) => {
+            if state.pid != pid {
+                eprintln!(
+                    "CodexKit {label} reported pid {}, expected {}",
+                    state.pid, pid
+                );
+            }
+
+            process.state = Some(state.clone());
+            Ok(state)
+        }
+        Err(error) => {
+            if let Some(child) = process.child.take() {
+                let _ = child.kill();
+            }
+
+            process.state = None;
+            remove_state_file();
+            Err(error)
+        }
+    }
+}
+
+fn stop_runtime(process: &mut RuntimeProcess) -> Result<()> {
+    let mut stop_error = None;
+
     if let Some(child) = process.child.take() {
-        let _ = child.kill();
-        remove_state_file();
+        if let Err(error) = child.kill() {
+            stop_error = Some(format!("failed to stop CodexKit runtime: {error}"));
+        }
+    } else if let Some(state) = process
+        .state
+        .clone()
+        .or_else(read_state)
+        .filter(|state| state.pid > 0)
+    {
+        terminate_pid(state.pid);
     }
 
     process.state = None;
+    remove_state_file();
+
+    match stop_error {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
+fn wait_for_state(state_path: &Path) -> Result<RuntimeState> {
+    let start = Instant::now();
+
+    while start.elapsed() < ENSURE_TIMEOUT {
+        if let Some(state) = read_state_from(state_path).filter(is_healthy) {
+            return Ok(state);
+        }
+
+        thread::sleep(POLL_INTERVAL);
+    }
+
+    Err("timed out waiting for CodexKit runtime to start".to_string())
 }
 
 pub(super) fn is_healthy(state: &RuntimeState) -> bool {
@@ -142,16 +244,26 @@ fn is_address_healthy(state: &RuntimeState, address: SocketAddr) -> bool {
     status_line.starts_with("HTTP/1.1 200") || status_line.starts_with("HTTP/1.0 200")
 }
 
-#[cfg(not(debug_assertions))]
 pub(super) fn read_state() -> Option<RuntimeState> {
     read_state_from(&runtime_state_path(&codex_home()))
 }
 
-#[cfg(not(debug_assertions))]
 pub(super) fn read_state_from(path: &Path) -> Option<RuntimeState> {
     let contents = fs::read_to_string(path).ok()?;
 
     serde_json::from_str(&contents).ok()
+}
+
+pub(super) fn write_state(path: &Path, state: &RuntimeState) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("failed to create runtime state directory: {error}"))?;
+    }
+
+    let contents = serde_json::to_string_pretty(state)
+        .map_err(|error| format!("failed to serialize runtime state: {error}"))?;
+    fs::write(path, format!("{contents}\n"))
+        .map_err(|error| format!("failed to write runtime state: {error}"))
 }
 
 pub(super) fn remove_state_file() {
@@ -175,4 +287,28 @@ fn home_dir() -> PathBuf {
         .or_else(|| env::var_os("USERPROFILE"))
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn terminate_pid(pid: u32) {
+    let pid_arg = pid.to_string();
+
+    #[cfg(windows)]
+    let status = StdCommand::new("taskkill")
+        .args(["/PID", &pid_arg, "/T", "/F"])
+        .status();
+
+    #[cfg(not(windows))]
+    let status = StdCommand::new("kill").args(["-TERM", &pid_arg]).status();
+
+    if let Err(error) = status {
+        eprintln!("Unable to terminate CodexKit runtime pid {pid}: {error}");
+    }
+}
+
+fn log_runtime_output(label: &str, stream: &str, bytes: &[u8]) {
+    let message = String::from_utf8_lossy(bytes).trim().to_string();
+
+    if !message.is_empty() {
+        eprintln!("CodexKit {label} {stream}: {message}");
+    }
 }

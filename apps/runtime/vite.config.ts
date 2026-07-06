@@ -63,6 +63,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
   return {
     ...commonConfig,
     server: {
+      host: "127.0.0.1",
       port: 31542,
       strictPort: true,
     },

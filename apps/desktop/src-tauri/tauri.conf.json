@@ -4,10 +4,6 @@
   "version": "0.0.0",
   "identifier": "com.codexkit.desktop",
   "build": {
-    "beforeDevCommand": {
-      "script": "vp dev ../runtime",
-      "wait": false
-    },
     "beforeBuildCommand": "node --experimental-strip-types ./scripts/prepare-sidecars.ts"
   },
   "app": {
