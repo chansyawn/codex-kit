@@ -1,7 +1,6 @@
 "use client";
 
 import { Link } from "@tanstack/react-router";
-import { BoxesIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 
 import { NavMain } from "@/app/layout/nav-main";
@@ -31,9 +30,7 @@ export function AppSidebar({ activePath, ...props }: AppSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link to="/" />}>
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <BoxesIcon className="size-4" aria-hidden="true" />
-              </div>
+              <img src="/favicon.svg" alt="" aria-hidden="true" className="size-8 rounded-lg" />
               <div className="grid flex-1 text-start text-sm leading-tight">
                 <span className="truncate font-medium">CodexKit</span>
                 <span className="truncate text-xs">{t.sidebar_product_subtitle()}</span>
