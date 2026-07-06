@@ -1,6 +1,5 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -111,7 +110,7 @@ async function createRuntimeApp(options: SidecarOptions, startedAt: number): Pro
   process.env.CODEXKIT_STATIC_ROOT = CLIENT_PATH;
   process.env.CODEXKIT_VERSION = options.version;
 
-  const runtimeModule = createRequire(pathToFileURL(SERVER_PATH))(SERVER_PATH) as RuntimeModule;
+  const runtimeModule = (await import(pathToFileURL(SERVER_PATH).href)) as RuntimeModule;
   const app =
     runtimeModule.createRuntimeApp?.({
       codexHome: options.codexHome,

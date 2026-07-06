@@ -7,7 +7,7 @@ export default defineConfig({
       "runtime-sidecar": "./src-node/runtime-sidecar.ts",
     },
     exports: false,
-    format: ["cjs"],
+    format: ["esm"],
     outDir: "dist-node",
     platform: "node",
   },
