@@ -3,6 +3,8 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   staged: {
     "*": "vp check --fix",
+    "apps/desktop/src-tauri/**/*.rs": () =>
+      "cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml",
   },
   fmt: {
     ignorePatterns: ["apps/runtime/src/routeTree.gen.ts"],
