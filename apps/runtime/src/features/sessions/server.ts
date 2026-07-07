@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import type {
@@ -47,6 +47,7 @@ type SessionFilterRow = {
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 100;
+const STATE_DB_FILE_NAME = "state_5.sqlite";
 const EMPTY_FILTERS: SessionsFiltersResponse = {
   archived: [
     { count: 0, label: "Active", value: false },
@@ -98,10 +99,9 @@ export function normalizeSessionListQuery(input: SessionListQueryInput = {}): Se
 
 export async function listSessions(options: ListSessionsOptions): Promise<SessionsResponse> {
   const query = normalizeSessionListQuery(options.query);
-  const dbPath = `${options.codexHome}/state_5.sqlite`;
-  if (!existsSync(dbPath)) return createSessionsResponse([], query);
+  const db = openStateDatabase(options.codexHome);
+  if (!db) return createSessionsResponse([], query);
 
-  const db = new DatabaseSync(dbPath, { readOnly: true });
   try {
     const rows = readSessionRows(db, query).map(mapRow);
 
@@ -117,10 +117,9 @@ export async function listSessionFilters(
   options: ListSessionFiltersOptions,
 ): Promise<SessionsFiltersResponse> {
   const query = normalizeSessionListQuery(options.query);
-  const dbPath = `${options.codexHome}/state_5.sqlite`;
-  if (!existsSync(dbPath)) return EMPTY_FILTERS;
+  const db = openStateDatabase(options.codexHome);
+  if (!db) return EMPTY_FILTERS;
 
-  const db = new DatabaseSync(dbPath, { readOnly: true });
   try {
     const rows = readSessionFilterRows(db, query);
 
@@ -148,7 +147,7 @@ function readSessionRows(db: DatabaseSync, query: SessionListQuery): ThreadRow[]
 }
 
 function readSessionFilterRows(db: DatabaseSync, query: SessionListQuery): SessionFilterRow[] {
-  const { clauses, params } = createTimeRangeWhereClause(query);
+  const { clauses, params } = createListableTimeRangeWhereClause(query);
 
   return db
     .prepare(
@@ -160,17 +159,16 @@ function readSessionFilterRows(db: DatabaseSync, query: SessionListQuery): Sessi
 }
 
 function createSessionsResponse(
-  titleMatchedSessions: SessionSummary[],
+  sessions: SessionSummary[],
   query: SessionListQuery,
 ): SessionsResponse {
-  const filteredSessions = filterSessions(titleMatchedSessions, query);
-  const total = filteredSessions.length;
+  const total = sessions.length;
   const totalPages = Math.ceil(total / query.perPage);
   const page = totalPages === 0 ? 1 : Math.min(query.page, totalPages);
   const start = (page - 1) * query.perPage;
 
   return {
-    data: filteredSessions.slice(start, start + query.perPage),
+    data: sessions.slice(start, start + query.perPage),
     pageInfo: {
       page,
       perPage: query.perPage,
@@ -208,15 +206,6 @@ function createSessionFiltersResponse(rows: SessionFilterRow[]): SessionsFilters
   };
 }
 
-function filterSessions(sessions: SessionSummary[], query: SessionListQuery): SessionSummary[] {
-  return sessions.filter(
-    (session) =>
-      matchesProject(session, query.project) &&
-      matchesProvider(session, query.provider) &&
-      matchesArchived(session, query.archived),
-  );
-}
-
 function createTextFilters(
   counts: Map<string, number>,
   kind: "project" | "provider",
@@ -230,37 +219,46 @@ function createTextFilters(
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }
 
-function matchesProject(session: SessionSummary, projects: string[]): boolean {
-  return projects.length === 0 || projects.includes(session.cwd);
-}
-
-function matchesProvider(session: SessionSummary, providers: string[]): boolean {
-  return providers.length === 0 || providers.includes(session.modelProvider);
-}
-
-function matchesArchived(session: SessionSummary, archived: boolean | undefined): boolean {
-  return archived === undefined || session.archived === archived;
-}
-
 function createSessionWhereClause(query: SessionListQuery): {
   clauses: string[];
   params: Array<number | string>;
 } {
-  const titlePattern = `%${escapeLikePattern(query.title).toLowerCase()}%`;
-  const timeRangeClause = createTimeRangeWhereClause(query);
+  const { clauses, params } = createListableTimeRangeWhereClause(query);
+
+  if (query.title) {
+    clauses.push("(instr(title, ?) > 0 OR instr(preview, ?) > 0)");
+    params.push(query.title, query.title);
+  }
+
+  if (query.archived !== undefined) {
+    clauses.push("archived = ?");
+    params.push(query.archived ? 1 : 0);
+  }
+
+  appendInClause(clauses, params, "cwd", query.project);
+  appendInClause(clauses, params, "model_provider", query.provider);
+
+  return { clauses, params };
+}
+
+function createListableTimeRangeWhereClause(query: SessionListQuery): {
+  clauses: string[];
+  params: Array<number | string>;
+} {
+  const { clauses, params } = createTimeRangeWhereClause(query);
 
   return {
-    clauses: ["lower(title) LIKE ? ESCAPE '\\'", ...timeRangeClause.clauses],
-    params: [titlePattern, ...timeRangeClause.params],
+    clauses: ["preview <> ''", ...clauses],
+    params,
   };
 }
 
 function createTimeRangeWhereClause(query: SessionListQuery): {
   clauses: string[];
-  params: number[];
+  params: Array<number | string>;
 } {
   const clauses = ["1 = 1"];
-  const params: number[] = [];
+  const params: Array<number | string> = [];
   const from = parseIsoDateTime(query.lastActivityFrom);
   const to = parseIsoDateTime(query.lastActivityTo);
 
@@ -275,6 +273,29 @@ function createTimeRangeWhereClause(query: SessionListQuery): {
   }
 
   return { clauses, params };
+}
+
+function appendInClause(
+  clauses: string[],
+  params: Array<number | string>,
+  column: string,
+  values: string[],
+): void {
+  if (values.length === 0) return;
+
+  clauses.push(`${column} IN (${values.map(() => "?").join(", ")})`);
+  params.push(...values);
+}
+
+function openStateDatabase(codexHome: string): DatabaseSync | undefined {
+  const dbPath = join(process.env.CODEX_SQLITE_HOME ?? codexHome, STATE_DB_FILE_NAME);
+  if (!existsSync(dbPath)) return undefined;
+
+  try {
+    return new DatabaseSync(dbPath, { readOnly: true });
+  } catch {
+    return undefined;
+  }
 }
 
 function normalizeArchived(value: unknown): boolean | undefined {
@@ -319,10 +340,6 @@ function normalizeStringList(value: unknown): string[] {
   }
 
   return [...uniqueValues];
-}
-
-function escapeLikePattern(value: string): string {
-  return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
 function parseIsoDateTime(value: string | undefined): number | undefined {

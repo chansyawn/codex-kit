@@ -3,9 +3,23 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { listSessionFilters, listSessions, normalizeSessionListQuery } from "./server";
+
+const ORIGINAL_CODEX_SQLITE_HOME = process.env.CODEX_SQLITE_HOME;
+
+beforeEach(() => {
+  delete process.env.CODEX_SQLITE_HOME;
+});
+
+afterEach(() => {
+  if (ORIGINAL_CODEX_SQLITE_HOME === undefined) {
+    delete process.env.CODEX_SQLITE_HOME;
+  } else {
+    process.env.CODEX_SQLITE_HOME = ORIGINAL_CODEX_SQLITE_HOME;
+  }
+});
 
 describe("sessions list", () => {
   it("returns an empty paginated response when the state database does not exist", async () => {
@@ -57,17 +71,30 @@ describe("sessions list", () => {
     });
   });
 
-  it("filters title case-insensitively without matching preview or cwd", async () => {
+  it("filters by title or preview using case-sensitive substring search", async () => {
     const codexHome = await createTempCodexHome();
     createStateDatabase(codexHome, [
       createThread({ id: "title-match", title: "Build runtime filters" }),
       createThread({ id: "preview-only", preview: "Build runtime filters", title: "Other work" }),
       createThread({ cwd: "/workspace/build-runtime", id: "cwd-only", title: "Different title" }),
+      createThread({ id: "case-mismatch", title: "BUILD runtime filters" }),
     ]);
 
-    const response = await listSessions({ codexHome, query: { title: "BUILD" } });
+    const response = await listSessions({ codexHome, query: { title: "Build" } });
 
-    expect(response.data.map((session) => session.id)).toEqual(["title-match"]);
+    expect(response.data.map((session) => session.id)).toEqual(["title-match", "preview-only"]);
+  });
+
+  it("excludes rows without a preview from list results", async () => {
+    const codexHome = await createTempCodexHome();
+    createStateDatabase(codexHome, [
+      createThread({ id: "listable-session", preview: "Listable session" }),
+      createThread({ id: "hidden-empty-preview", preview: "" }),
+    ]);
+
+    const response = await listSessions({ codexHome });
+
+    expect(response.data.map((session) => session.id)).toEqual(["listable-session"]);
   });
 
   it("combines filter categories with AND and repeated project/provider values with OR", async () => {
@@ -237,6 +264,26 @@ describe("sessions list", () => {
     });
   });
 
+  it("reads the state database from CODEX_SQLITE_HOME when it is set", async () => {
+    const codexHome = await createTempCodexHome();
+    const sqliteHome = await createTempCodexHome();
+    createStateDatabase(sqliteHome, [createThread({ id: "sqlite-home-session" })]);
+
+    const previousSqliteHome = process.env.CODEX_SQLITE_HOME;
+    process.env.CODEX_SQLITE_HOME = sqliteHome;
+    try {
+      const response = await listSessions({ codexHome });
+
+      expect(response.data.map((session) => session.id)).toEqual(["sqlite-home-session"]);
+    } finally {
+      if (previousSqliteHome === undefined) {
+        delete process.env.CODEX_SQLITE_HOME;
+      } else {
+        process.env.CODEX_SQLITE_HOME = previousSqliteHome;
+      }
+    }
+  });
+
   it("builds global filter counts independent of list query filters", async () => {
     const codexHome = await createTempCodexHome();
     createStateDatabase(codexHome, [
@@ -270,6 +317,12 @@ describe("sessions list", () => {
         id: "other-title",
         modelProvider: "openai",
         title: "Debug filters",
+      }),
+      createThread({
+        cwd: "/workspace/hidden",
+        id: "empty-preview",
+        preview: "",
+        title: "Hidden filters",
       }),
     ]);
 
@@ -320,6 +373,12 @@ describe("sessions list", () => {
         id: "alpha-outside-range",
         modelProvider: "openai",
         updatedAtMs: Date.parse("2026-06-20T12:00:00+08:00"),
+      }),
+      createThread({
+        cwd: "/workspace/hidden",
+        id: "empty-preview-in-range",
+        preview: "",
+        updatedAtMs: Date.parse("2026-06-24T14:00:00+08:00"),
       }),
     ]);
 
@@ -394,7 +453,7 @@ function createThread(overrides: Partial<TestThread>): TestThread {
     id: crypto.randomUUID(),
     model: "gpt-5.5",
     modelProvider: "openai",
-    preview: "",
+    preview: "Session preview",
     rolloutPath: "/tmp/rollout.jsonl",
     source: "codex",
     title: "Session",
