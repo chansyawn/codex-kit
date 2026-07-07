@@ -2,8 +2,10 @@ import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import { readSessionDetailFromAppServer } from "./app-server-client";
 import type {
   SessionFilterOption,
+  SessionDetailResponse,
   SessionListQuery,
   SessionListQueryInput,
   SessionsFiltersResponse,
@@ -19,6 +21,20 @@ export type ListSessionsOptions = {
 export type ListSessionFiltersOptions = {
   codexHome: string;
   query?: Pick<SessionListQueryInput, "lastActivityFrom" | "lastActivityTo">;
+};
+
+export type SessionDetailReaderOptions = {
+  codexHome: string;
+  sessionId: string;
+  version: string;
+};
+
+export type SessionDetailReader = (
+  options: SessionDetailReaderOptions,
+) => Promise<SessionDetailResponse>;
+
+export type ReadSessionDetailOptions = SessionDetailReaderOptions & {
+  reader?: SessionDetailReader;
 };
 
 type ThreadRow = {
@@ -129,6 +145,18 @@ export async function listSessionFilters(
   } finally {
     db.close();
   }
+}
+
+export async function readSessionDetail(
+  options: ReadSessionDetailOptions,
+): Promise<SessionDetailResponse> {
+  const reader = options.reader ?? readSessionDetailFromAppServer;
+
+  return reader({
+    codexHome: options.codexHome,
+    sessionId: options.sessionId,
+    version: options.version,
+  });
 }
 
 function readSessionRows(db: DatabaseSync, query: SessionListQuery): ThreadRow[] {

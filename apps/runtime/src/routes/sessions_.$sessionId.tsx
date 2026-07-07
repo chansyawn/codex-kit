@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { SessionDetailPage } from "@/features/sessions/session-detail-page";
+
 export const Route = createFileRoute("/sessions_/$sessionId")({
-  component: SessionPage,
+  component: SessionRoute,
 });
 
-function SessionPage() {
-  return <section aria-hidden="true" className="hidden" />;
+function SessionRoute() {
+  const { sessionId } = Route.useParams();
+
+  return <SessionDetailPage sessionId={sessionId} />;
 }

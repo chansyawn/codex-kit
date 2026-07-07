@@ -1,7 +1,7 @@
 import { type InferResponseType } from "hono/client";
 
 import { readRuntimeApiJson, runtimeApiClient } from "@/app/clients";
-import type { SessionListQuery } from "@/features/sessions/model";
+import type { SessionDetailResponse, SessionListQuery } from "@/features/sessions/model";
 
 type SessionsResponse = InferResponseType<typeof runtimeApiClient.sessions.$get>;
 type SessionsFiltersResponse = InferResponseType<typeof runtimeApiClient.sessions.filters.$get>;
@@ -35,6 +35,14 @@ export function readSessionFilters(
   return readRuntimeApiJson<SessionsFiltersResponse>(
     runtimeApiClient.sessions.filters.$get({
       query: createTimeRangeQueryParams(query),
+    }),
+  );
+}
+
+export function readSessionDetail(sessionId: string): Promise<SessionDetailResponse> {
+  return readRuntimeApiJson<SessionDetailResponse>(
+    runtimeApiClient.sessions[":sessionId"].$get({
+      param: { sessionId },
     }),
   );
 }

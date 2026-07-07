@@ -5,6 +5,9 @@ import { DatabaseSync } from "node:sqlite";
 
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
+import { createRuntimeApi } from "@/server/api";
+
+import type { SessionDetailResponse } from "./model";
 import { listSessionFilters, listSessions, normalizeSessionListQuery } from "./server";
 
 const ORIGINAL_CODEX_SQLITE_HOME = process.env.CODEX_SQLITE_HOME;
@@ -420,6 +423,53 @@ describe("sessions list", () => {
   });
 });
 
+describe("session detail API", () => {
+  it("returns session detail from the injected reader", async () => {
+    const calls: Array<{ codexHome: string; sessionId: string; version: string }> = [];
+    const detail = createSessionDetailResponse();
+    const app = createRuntimeApi({
+      codexHome: "/tmp/codex-home",
+      sessionDetailReader: async (options) => {
+        calls.push(options);
+
+        return detail;
+      },
+      startedAt: 0,
+      version: "test-version",
+    });
+
+    const response = await app.request("/sessions/thread-a");
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(detail);
+    expect(calls).toEqual([
+      {
+        codexHome: "/tmp/codex-home",
+        sessionId: "thread-a",
+        version: "test-version",
+      },
+    ]);
+  });
+
+  it("returns a server error when the injected reader fails", async () => {
+    const app = createRuntimeApi({
+      codexHome: "/tmp/codex-home",
+      sessionDetailReader: async () => {
+        throw new Error("app-server failed");
+      },
+      startedAt: 0,
+      version: "test-version",
+    });
+
+    const response = await app.request("/sessions/thread-a");
+    const body = (await response.json()) as { error: string; ok: false };
+
+    expect(response.status).toBe(500);
+    expect(body.ok).toBe(false);
+    expect(body.error).toContain("app-server failed");
+  });
+});
+
 type TestThread = {
   archived: boolean;
   archivedAt: number | null;
@@ -442,6 +492,34 @@ async function createTempCodexHome(): Promise<string> {
   await mkdir(codexHome, { recursive: true });
 
   return codexHome;
+}
+
+function createSessionDetailResponse(): SessionDetailResponse {
+  return {
+    thread: {
+      agentNickname: null,
+      agentRole: null,
+      cliVersion: "0.142.5",
+      createdAt: 1_783_000_000,
+      cwd: "/workspace/project",
+      ephemeral: false,
+      forkedFromId: null,
+      gitInfo: null,
+      id: "thread-a",
+      modelProvider: "openai",
+      name: "Thread detail",
+      parentThreadId: null,
+      path: "/tmp/rollout.jsonl",
+      preview: "Thread detail",
+      recencyAt: 1_783_000_100,
+      sessionId: "thread-a",
+      source: "appServer",
+      status: { type: "idle" },
+      threadSource: null,
+      turns: [],
+      updatedAt: 1_783_000_100,
+    },
+  };
 }
 
 function createThread(overrides: Partial<TestThread>): TestThread {

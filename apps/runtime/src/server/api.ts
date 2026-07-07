@@ -3,7 +3,12 @@ import { Hono } from "hono";
 import { normalizeCodexConfigPatch } from "@/features/config/model";
 import { createCodexConfigStore, CodexConfigParseError } from "@/features/config/server";
 import { normalizeDashboardRange, readDashboard } from "@/features/dashboard/server";
-import { listSessionFilters, listSessions } from "@/features/sessions/server";
+import {
+  listSessionFilters,
+  listSessions,
+  readSessionDetail,
+  type SessionDetailReader,
+} from "@/features/sessions/server";
 import { normalizeRuntimeSettingsPatch } from "@/features/settings/model";
 import { createRuntimeSettingsStore } from "@/features/settings/server-store";
 import {
@@ -15,6 +20,7 @@ import {
 export type RuntimeApiOptions = {
   codexHome: string;
   openDeeplink?: DeeplinkOpener;
+  sessionDetailReader?: SessionDetailReader;
   startedAt: number;
   version: string;
 };
@@ -51,6 +57,22 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
         }),
       ),
     )
+    .get("/sessions/:sessionId", async (context) => {
+      try {
+        return context.json(
+          await readSessionDetail({
+            codexHome: options.codexHome,
+            reader: options.sessionDetailReader,
+            sessionId: context.req.param("sessionId"),
+            version: options.version,
+          }),
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to load session detail.";
+
+        return context.json({ error: message, ok: false }, 500);
+      }
+    })
     .get("/sessions", async (context) =>
       context.json(
         await listSessions({

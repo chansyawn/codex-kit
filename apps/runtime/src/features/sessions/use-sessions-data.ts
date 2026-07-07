@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import {
+  readSessionDetail,
   readSessionFilters,
   readSessions,
   type ReadSessionFiltersQuery,
@@ -32,5 +33,20 @@ export function useSessionFiltersData(query: ReadSessionFiltersQuery = {}) {
 
   return {
     sessionFiltersQuery,
+  };
+}
+
+export function useSessionDetailData(sessionId: string) {
+  const sessionDetailQuery = useQuery({
+    queryFn: () => readSessionDetail(sessionId),
+    queryKey: ["session-detail", sessionId],
+  });
+
+  return {
+    isRefreshing: sessionDetailQuery.isFetching,
+    refresh: () => {
+      void sessionDetailQuery.refetch();
+    },
+    sessionDetailQuery,
   };
 }
