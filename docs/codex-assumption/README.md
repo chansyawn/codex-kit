@@ -9,6 +9,8 @@ decisions, not Codex public API contracts or long-term compatibility guarantees.
 
 - [codex-app-ipc-session-message.md](./codex-app-ipc-session-message.md): Codex
   App local IPC path for sending a message to an active session.
+- [codex-sqlite-state.md](./codex-sqlite-state.md): Codex `state_5.sqlite`
+  thread metadata schema and list semantics.
 - [rollout-jsonl-format.md](./rollout-jsonl-format.md): Codex `rollout-*.jsonl`
   internal format.
 
