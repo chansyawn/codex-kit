@@ -55,6 +55,7 @@ function SelectContent({
         className="isolate z-50 outline-none"
         align={align}
         alignOffset={alignOffset}
+        alignItemWithTrigger={false}
         side={side}
         sideOffset={sideOffset}
       >
