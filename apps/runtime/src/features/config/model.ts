@@ -1,4 +1,4 @@
-export const BUILT_IN_MODEL_PROVIDERS = ["openai", "amazon-bedrock", "ollama", "lmstudio"] as const;
+export const BUILT_IN_MODEL_PROVIDERS = ["openai"] as const;
 
 export type CodexConfigProviderOption = {
   id: string;

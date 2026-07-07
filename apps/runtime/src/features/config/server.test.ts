@@ -23,12 +23,7 @@ describe("codex config storage", () => {
       configPath: getCodexConfigPath(codexHome),
       modelProvider: "openai",
       parseStatus: { ok: true },
-      providers: [
-        { builtIn: true, configured: false, id: "openai", label: "openai" },
-        { builtIn: true, configured: false, id: "amazon-bedrock", label: "amazon-bedrock" },
-        { builtIn: true, configured: false, id: "ollama", label: "ollama" },
-        { builtIn: true, configured: false, id: "lmstudio", label: "lmstudio" },
-      ],
+      providers: [{ builtIn: true, configured: false, id: "openai", label: "openai" }],
     });
   });
 
@@ -64,7 +59,7 @@ describe("codex config storage", () => {
     const config = await readCodexConfig(codexHome);
 
     expect(config.parseStatus.ok).toBe(false);
-    await expect(patchCodexConfig(codexHome, "ollama")).rejects.toBeInstanceOf(
+    await expect(patchCodexConfig(codexHome, "proxy")).rejects.toBeInstanceOf(
       CodexConfigParseError,
     );
     await expect(readFile(getCodexConfigPath(codexHome), "utf8")).resolves.toBe(
@@ -131,13 +126,13 @@ describe("codex config storage", () => {
     const codexHome = await createTempCodexHome();
     const store = createCodexConfigStore(codexHome);
 
-    await expect(store.patch({ modelProvider: "ollama" })).resolves.toMatchObject({
-      modelProvider: "ollama",
+    await expect(store.patch({ modelProvider: "proxy" })).resolves.toMatchObject({
+      modelProvider: "proxy",
       parseStatus: { ok: true },
     });
 
     await expect(readFile(getCodexConfigPath(codexHome), "utf8")).resolves.toBe(
-      'model_provider = "ollama"\n',
+      'model_provider = "proxy"\n',
     );
   });
 });
@@ -170,17 +165,17 @@ describe("codex config API", () => {
     });
 
     const response = await app.request("/config", {
-      body: JSON.stringify({ modelProvider: "lmstudio" }),
+      body: JSON.stringify({ modelProvider: "proxy" }),
       headers: { "content-type": "application/json" },
       method: "PATCH",
     });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      modelProvider: "lmstudio",
+      modelProvider: "proxy",
     });
     await expect(readFile(getCodexConfigPath(codexHome), "utf8")).resolves.toBe(
-      'model_provider = "lmstudio"\n',
+      'model_provider = "proxy"\n',
     );
   });
 
