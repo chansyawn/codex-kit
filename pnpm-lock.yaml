@@ -305,6 +305,9 @@ importers:
       shadcn:
         specifier: ^4.11.0
         version: 4.11.0(babel-plugin-macros@3.1.0)(typescript@6.0.3)
+      smol-toml:
+        specifier: ^1.7.0
+        version: 1.7.0
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -5334,6 +5337,10 @@ packages:
 
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
+
+  smol-toml@1.7.0:
+    resolution: {integrity: sha512-aqVvWoyO21L23mb+drl4RmMXbf6N7FdHjAhTRA9ZBL7apWBgfWC16KjrASI+1p9GAroljyMHj6fK67i0UiTNvQ==}
+    engines: {node: '>= 18'}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -11736,6 +11743,8 @@ snapshots:
       totalist: 3.0.1
 
   sisteransi@1.0.5: {}
+
+  smol-toml@1.7.0: {}
 
   source-map-js@1.2.1: {}
 

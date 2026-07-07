@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { normalizeCodexConfigPatch } from "@/features/config/model";
+import { createCodexConfigStore, CodexConfigParseError } from "@/features/config/server";
 import { normalizeDashboardRange, readDashboard } from "@/features/dashboard/server";
 import { listSessionFilters, listSessions } from "@/features/sessions/server";
 import { normalizeRuntimeSettingsPatch } from "@/features/settings/model";
@@ -18,6 +20,7 @@ export type RuntimeApiOptions = {
 };
 
 export function createRuntimeApi(options: RuntimeApiOptions) {
+  const config = createCodexConfigStore(options.codexHome);
   const settings = createRuntimeSettingsStore(options.codexHome);
   const openDeeplink = options.openDeeplink ?? openSystemDeeplink;
 
@@ -81,6 +84,20 @@ export function createRuntimeApi(options: RuntimeApiOptions) {
         return context.json({ ok: true }, 202);
       } catch {
         return context.json({ error: "Failed to open deeplink", ok: false }, 500);
+      }
+    })
+    .get("/config", async (context) => context.json(await config.read()))
+    .patch("/config", async (context) => {
+      const rawPatch: unknown = await context.req.json().catch(() => ({}));
+
+      try {
+        return context.json(await config.patch(normalizeCodexConfigPatch(rawPatch)));
+      } catch (error) {
+        if (error instanceof CodexConfigParseError) {
+          return context.json({ error: error.message, ok: false }, 409);
+        }
+
+        return context.json({ error: "Failed to write config.toml", ok: false }, 500);
       }
     })
     .get("/settings", async (context) => context.json(await settings.read()))
