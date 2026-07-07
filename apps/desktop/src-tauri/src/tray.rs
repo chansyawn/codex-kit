@@ -11,6 +11,10 @@ const RESTART_SERVICE_ID: &str = "restart-service";
 const STOP_SERVICE_ID: &str = "stop-service";
 const QUIT_ID: &str = "quit";
 
+#[cfg(target_os = "macos")]
+const TRAY_TEMPLATE_ICON: tauri::image::Image<'_> =
+    tauri::include_image!("./icons/tray-template.png");
+
 pub fn create_tray(app: &App) -> tauri::Result<()> {
     let open_dashboard =
         MenuItem::with_id(app, OPEN_DASHBOARD_ID, "Open Dashboard", true, None::<&str>)?;
@@ -34,12 +38,18 @@ pub fn create_tray(app: &App) -> tauri::Result<()> {
             &quit,
         ],
     )?;
+    #[cfg(target_os = "macos")]
+    let icon = TRAY_TEMPLATE_ICON.clone();
+
+    #[cfg(not(target_os = "macos"))]
     let icon = app
         .default_window_icon()
-        .expect("CodexKit desktop requires a bundled application icon");
+        .expect("CodexKit desktop requires a bundled application icon")
+        .clone();
 
     TrayIconBuilder::new()
-        .icon(icon.clone())
+        .icon(icon)
+        .icon_as_template(cfg!(target_os = "macos"))
         .tooltip("CodexKit")
         .menu(&menu)
         .show_menu_on_left_click(false)
