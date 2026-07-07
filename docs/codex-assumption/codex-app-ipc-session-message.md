@@ -1,3 +1,15 @@
+---
+date: "2026-07-07"
+description: "Codex App local IPC path for sending a message to an active session"
+reference:
+  - type: "codex-desktop-reverse-engineering"
+    platform: "macOS 26.3.1 (25D771280a)"
+    app_version: "26.623.141536"
+    build: "4753"
+    observed_at: "2026-07-07"
+    notes: "Verified local IPC router framing and thread-follower request flow on /Applications/Codex.app"
+---
+
 # Codex App IPC Session Message Path
 
 This document records a verified internal Codex App IPC send path, for later implementation of the ability to "send a message to the current Codex App session" in CodexKit.
