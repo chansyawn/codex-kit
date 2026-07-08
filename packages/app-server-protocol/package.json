@@ -1,0 +1,21 @@
+{
+  "name": "@codexkit/app-server-protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/generated/index.ts",
+      "default": "./src/generated/index.ts"
+    },
+    "./v2": {
+      "types": "./src/generated/v2/index.ts",
+      "default": "./src/generated/v2/index.ts"
+    },
+    "./schemas/*": "./schemas/*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
