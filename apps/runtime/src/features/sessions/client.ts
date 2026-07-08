@@ -1,7 +1,8 @@
+import type { ThreadReadResponse } from "@codexkit/app-server-protocol/v2";
 import { type InferResponseType } from "hono/client";
 
 import { readRuntimeApiJson, runtimeApiClient } from "@/app/clients";
-import type { SessionDetailResponse, SessionListQuery } from "@/features/sessions/model";
+import type { SessionListQuery } from "@/features/sessions/model";
 
 type SessionsResponse = InferResponseType<typeof runtimeApiClient.sessions.$get>;
 type SessionsFiltersResponse = InferResponseType<typeof runtimeApiClient.sessions.filters.$get>;
@@ -39,8 +40,8 @@ export function readSessionFilters(
   );
 }
 
-export function readSessionDetail(sessionId: string): Promise<SessionDetailResponse> {
-  return readRuntimeApiJson<SessionDetailResponse>(
+export function readSessionDetail(sessionId: string): Promise<ThreadReadResponse> {
+  return readRuntimeApiJson<ThreadReadResponse>(
     runtimeApiClient.sessions[":sessionId"].$get({
       param: { sessionId },
     }),

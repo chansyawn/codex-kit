@@ -2,10 +2,11 @@ import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import type { ThreadReadResponse } from "@codexkit/app-server-protocol/v2";
+
 import { readSessionDetailFromAppServer } from "./app-server-client";
 import type {
   SessionFilterOption,
-  SessionDetailResponse,
   SessionListQuery,
   SessionListQueryInput,
   SessionsFiltersResponse,
@@ -31,7 +32,7 @@ export type SessionDetailReaderOptions = {
 
 export type SessionDetailReader = (
   options: SessionDetailReaderOptions,
-) => Promise<SessionDetailResponse>;
+) => Promise<ThreadReadResponse>;
 
 export type ReadSessionDetailOptions = SessionDetailReaderOptions & {
   reader?: SessionDetailReader;
@@ -149,7 +150,7 @@ export async function listSessionFilters(
 
 export async function readSessionDetail(
   options: ReadSessionDetailOptions,
-): Promise<SessionDetailResponse> {
+): Promise<ThreadReadResponse> {
   const reader = options.reader ?? readSessionDetailFromAppServer;
 
   return reader({

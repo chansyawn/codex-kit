@@ -1,8 +1,7 @@
+import type { Thread } from "@codexkit/app-server-protocol/v2";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-
-import type { SessionThread } from "./model";
 
 type MessageParams = Record<string, string>;
 
@@ -119,7 +118,7 @@ describe("SessionDetailView", () => {
   });
 });
 
-async function renderSessionDetail(thread: SessionThread): Promise<{
+async function renderSessionDetail(thread: Thread): Promise<{
   container: HTMLDivElement;
   root: Root;
 }> {
@@ -167,7 +166,7 @@ function createMessages() {
   ) as Record<string, (params?: MessageParams) => string>;
 }
 
-function createThread(): SessionThread {
+function createThread(): Thread {
   return {
     agentNickname: null,
     agentRole: null,
@@ -235,7 +234,7 @@ function createThread(): SessionThread {
             changes: [
               {
                 diff: "@@\n+fixed\n",
-                kind: { type: "move", move_path: "src/app-renamed.ts" },
+                kind: { type: "update", move_path: "src/app-renamed.ts" },
                 path: "src/app.ts",
               },
             ],

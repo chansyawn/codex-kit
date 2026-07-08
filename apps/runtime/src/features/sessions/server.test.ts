@@ -3,11 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import type { ThreadReadResponse } from "@codexkit/app-server-protocol/v2";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { createRuntimeApi } from "@/server/api";
 
-import type { SessionDetailResponse } from "./model";
 import { listSessionFilters, listSessions, normalizeSessionListQuery } from "./server";
 
 const ORIGINAL_CODEX_SQLITE_HOME = process.env.CODEX_SQLITE_HOME;
@@ -494,7 +494,7 @@ async function createTempCodexHome(): Promise<string> {
   return codexHome;
 }
 
-function createSessionDetailResponse(): SessionDetailResponse {
+function createSessionDetailResponse(): ThreadReadResponse {
   return {
     thread: {
       agentNickname: null,

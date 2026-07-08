@@ -1,19 +1,19 @@
+import type {
+  CommandAction,
+  FileUpdateChange,
+  SessionSource,
+  Thread,
+  ThreadItem,
+  ThreadStatus,
+  Turn,
+  UserInput,
+  WebSearchAction,
+} from "@codexkit/app-server-protocol/v2";
 import Codex from "@lobehub/icons/es/Codex";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react";
 import { isValidElement, type ReactNode } from "react";
 
-import type {
-  SessionCommandAction,
-  SessionFileUpdateChange,
-  SessionSource,
-  SessionThread,
-  SessionThreadItem,
-  SessionThreadStatus,
-  SessionTurn,
-  SessionUserInput,
-  SessionWebSearchAction,
-} from "@/features/sessions/model";
 import { useRuntimeI18n } from "@/features/settings/i18n-provider";
 import { Badge } from "@/ui/components/badge";
 import { Button } from "@/ui/components/button";
@@ -43,7 +43,7 @@ export type SessionDetailViewProps = {
   isRefreshing: boolean;
   onOpenInCodex: () => void;
   onRefresh: () => void;
-  thread: SessionThread;
+  thread: Thread;
 };
 
 export function SessionDetailView({
@@ -148,7 +148,7 @@ export function SessionDetailError({ message }: { message: string }) {
   return <p className="text-destructive text-sm">{message}</p>;
 }
 
-function TurnSection({ index, turn }: { index: number; turn: SessionTurn }) {
+function TurnSection({ index, turn }: { index: number; turn: Turn }) {
   const { locale, t } = useRuntimeI18n();
   const metadataRows: MetadataRow[] = [
     { label: t.session_detail_turn_id(), value: <CodeValue>{turn.id}</CodeValue> },
@@ -189,7 +189,7 @@ function TurnSection({ index, turn }: { index: number; turn: SessionTurn }) {
   );
 }
 
-function ThreadItemView({ item }: { item: SessionThreadItem }) {
+function ThreadItemView({ item }: { item: ThreadItem }) {
   const { t } = useRuntimeI18n();
 
   return (
@@ -213,7 +213,7 @@ function ThreadItemView({ item }: { item: SessionThreadItem }) {
   );
 }
 
-function renderThreadItemContent(item: SessionThreadItem, t: RuntimeMessages): ReactNode {
+function renderThreadItemContent(item: ThreadItem, t: RuntimeMessages): ReactNode {
   switch (item.type) {
     case "userMessage":
       return (
@@ -414,7 +414,7 @@ function renderThreadItemContent(item: SessionThreadItem, t: RuntimeMessages): R
   }
 }
 
-function UserInputView({ input }: { input: SessionUserInput }) {
+function UserInputView({ input }: { input: UserInput }) {
   const { t } = useRuntimeI18n();
 
   switch (input.type) {
@@ -451,7 +451,7 @@ function UserInputView({ input }: { input: SessionUserInput }) {
   }
 }
 
-function CommandActions({ actions }: { actions: SessionCommandAction[] }) {
+function CommandActions({ actions }: { actions: CommandAction[] }) {
   const { t } = useRuntimeI18n();
   if (actions.length === 0) return null;
 
@@ -469,7 +469,7 @@ function CommandActions({ actions }: { actions: SessionCommandAction[] }) {
   );
 }
 
-function FileChangeView({ change }: { change: SessionFileUpdateChange }) {
+function FileChangeView({ change }: { change: FileUpdateChange }) {
   const { t } = useRuntimeI18n();
 
   return (
@@ -485,7 +485,7 @@ function FileChangeView({ change }: { change: SessionFileUpdateChange }) {
   );
 }
 
-function WebSearchActionView({ action }: { action: SessionWebSearchAction }) {
+function WebSearchActionView({ action }: { action: WebSearchAction }) {
   const { t } = useRuntimeI18n();
 
   switch (action.type) {
@@ -533,7 +533,7 @@ function WebSearchActionView({ action }: { action: SessionWebSearchAction }) {
 }
 
 function createThreadMetadataRows(
-  thread: SessionThread,
+  thread: Thread,
   locale: string,
   t: RuntimeMessages,
 ): MetadataRow[] {
@@ -581,7 +581,7 @@ function MetadataGrid({ rows }: { rows: MetadataRow[] }) {
   );
 }
 
-function ThreadStatusBadge({ status }: { status: SessionThreadStatus }) {
+function ThreadStatusBadge({ status }: { status: ThreadStatus }) {
   const { t } = useRuntimeI18n();
   const isActive = status.type === "active";
 
@@ -683,7 +683,7 @@ function CodeValue({ children }: { children: ReactNode }) {
   return <code className="font-mono text-xs break-all">{children}</code>;
 }
 
-function formatThreadStatus(status: SessionThreadStatus, t: RuntimeMessages): string {
+function formatThreadStatus(status: ThreadStatus, t: RuntimeMessages): string {
   if (status.type === "active") {
     const flags = status.activeFlags.length > 0 ? `: ${status.activeFlags.join(", ")}` : "";
 
@@ -696,7 +696,7 @@ function formatThreadStatus(status: SessionThreadStatus, t: RuntimeMessages): st
   return t.session_detail_status_system_error();
 }
 
-function formatTurnStatus(status: SessionTurn["status"], t: RuntimeMessages): string {
+function formatTurnStatus(status: Turn["status"], t: RuntimeMessages): string {
   if (status === "completed") return t.session_detail_turn_status_completed();
   if (status === "failed") return t.session_detail_turn_status_failed();
   if (status === "inProgress") return t.session_detail_turn_status_in_progress();
@@ -704,7 +704,7 @@ function formatTurnStatus(status: SessionTurn["status"], t: RuntimeMessages): st
   return t.session_detail_turn_status_interrupted();
 }
 
-function getItemTypeLabel(type: SessionThreadItem["type"], t: RuntimeMessages): string {
+function getItemTypeLabel(type: ThreadItem["type"], t: RuntimeMessages): string {
   switch (type) {
     case "agentMessage":
       return t.session_detail_item_agent_message();

@@ -257,6 +257,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.6.0
         version: 1.6.0(@date-fns/tz@1.5.0)(@types/react@19.2.17)(date-fns@4.4.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@codexkit/app-server-protocol':
+        specifier: workspace:*
+        version: link:../../packages/app-server-protocol
       '@fontsource-variable/inter':
         specifier: ^5.2.8
         version: 5.2.8

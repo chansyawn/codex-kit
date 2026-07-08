@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@codexkit/app-server-protocol": "workspace:*",
     "@fontsource-variable/inter": "^5.2.8",
     "@hono/node-server": "catalog:",
     "@inlang/paraglide-js": "^2.20.2",

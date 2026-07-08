@@ -2,7 +2,13 @@ import { spawn } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface, type Interface } from "node:readline";
 
-import type { SessionDetailResponse } from "./model";
+import type {
+  ClientNotification,
+  ClientRequest,
+  InitializeParams,
+  RequestId,
+} from "@codexkit/app-server-protocol";
+import type { ThreadReadParams, ThreadReadResponse } from "@codexkit/app-server-protocol/v2";
 
 export type AppServerTransport = {
   close: () => void;
@@ -29,18 +35,13 @@ export type ReadSessionDetailFromAppServerOptions = {
   version: string;
 };
 
-export type AppServerRequest = {
-  id: number;
-  method: string;
-  params: unknown;
-};
+export type AppServerClientMessage = ClientNotification | ClientRequest;
 
-export type AppServerNotification = {
-  method: string;
-  params: unknown;
-};
-
-export type AppServerClientMessage = AppServerNotification | AppServerRequest;
+type AppServerRequestInput = ClientRequest extends infer TRequest
+  ? TRequest extends { id: RequestId }
+    ? Omit<TRequest, "id">
+    : never
+  : never;
 
 type PendingLineReader = {
   reject: (error: Error) => void;
@@ -59,7 +60,7 @@ export class AppServerClientError extends Error {
 
 export async function readSessionDetailFromAppServer(
   options: ReadSessionDetailFromAppServerOptions,
-): Promise<SessionDetailResponse> {
+): Promise<ThreadReadResponse> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const transport = (options.createTransport ?? createStdioAppServerTransport)({
     codexBin: options.codexBin ?? process.env.CODEXKIT_CODEX_BIN ?? "codex",
@@ -68,7 +69,7 @@ export async function readSessionDetailFromAppServer(
   const client = new JsonRpcClient(transport, timeoutMs);
 
   try {
-    await client.request("initialize", {
+    const initializeParams: InitializeParams = {
       capabilities: {
         experimentalApi: true,
         requestAttestation: false,
@@ -78,15 +79,21 @@ export async function readSessionDetailFromAppServer(
         title: "CodexKit Runtime",
         version: options.version,
       },
-    });
-    client.notify("initialized", {});
+    };
 
-    const response = await client.request("thread/read", {
+    await client.request({ method: "initialize", params: initializeParams });
+    client.notify({ method: "initialized" });
+
+    const threadReadParams: ThreadReadParams = {
       includeTurns: true,
       threadId: options.sessionId,
+    };
+    const response = await client.request<ThreadReadResponse>({
+      method: "thread/read",
+      params: threadReadParams,
     });
 
-    if (!isSessionDetailResponse(response)) {
+    if (!isThreadReadResponse(response)) {
       throw new AppServerClientError("App server returned an invalid thread/read response.");
     }
 
@@ -123,19 +130,23 @@ class JsonRpcClient {
     this.timeoutMs = timeoutMs;
   }
 
-  notify(method: string, params: unknown): void {
-    this.transport.send({ method, params });
+  notify(message: ClientNotification): void {
+    this.transport.send(message);
   }
 
-  async request(method: string, params: unknown): Promise<unknown> {
+  async request<TResponse = unknown>(message: AppServerRequestInput): Promise<TResponse> {
     const id = this.nextId;
     this.nextId += 1;
-    this.transport.send({ id, method, params });
+    this.transport.send({ ...message, id } as ClientRequest);
 
-    return withTimeout(this.readResponse(id, method), this.timeoutMs, method);
+    return withTimeout(
+      this.readResponse<TResponse>(id, message.method),
+      this.timeoutMs,
+      message.method,
+    );
   }
 
-  private async readResponse(id: number, method: string): Promise<unknown> {
+  private async readResponse<TResponse>(id: number, method: string): Promise<TResponse> {
     while (true) {
       const line = (await this.transport.readLine()).trim();
       if (!line) continue;
@@ -147,7 +158,7 @@ class JsonRpcClient {
         throw new AppServerClientError(formatJsonRpcError(method, message.error));
       }
 
-      return "result" in message ? message.result : undefined;
+      return ("result" in message ? message.result : undefined) as TResponse;
     }
   }
 }
@@ -284,7 +295,7 @@ function createClientError(error: unknown, stderr: string): AppServerClientError
   return new AppServerClientError(`${message}${suffix}`);
 }
 
-function isSessionDetailResponse(value: unknown): value is SessionDetailResponse {
+function isThreadReadResponse(value: unknown): value is ThreadReadResponse {
   if (!isRecord(value) || !isRecord(value.thread)) return false;
 
   return typeof value.thread.id === "string" && Array.isArray(value.thread.turns);

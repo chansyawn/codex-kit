@@ -1,3 +1,5 @@
+import type { ClientRequest } from "@codexkit/app-server-protocol";
+import type { Thread, ThreadReadResponse } from "@codexkit/app-server-protocol/v2";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -5,7 +7,6 @@ import {
   type AppServerTransport,
   readSessionDetailFromAppServer,
 } from "./app-server-client";
-import type { SessionDetailResponse, SessionThread } from "./model";
 
 describe("app-server session detail client", () => {
   it("initializes the connection, reads a thread, ignores notifications, and closes", async () => {
@@ -175,19 +176,17 @@ function getRequest(message: AppServerClientMessage | undefined) {
   return message && isRequest(message) ? message : undefined;
 }
 
-function isRequest(
-  message: AppServerClientMessage,
-): message is AppServerClientMessage & { id: number } {
+function isRequest(message: AppServerClientMessage): message is ClientRequest {
   return "id" in message;
 }
 
-function createDetailResponse(): SessionDetailResponse {
+function createDetailResponse(): ThreadReadResponse {
   return {
     thread: createThread(),
   };
 }
 
-function createThread(): SessionThread {
+function createThread(): Thread {
   return {
     agentNickname: null,
     agentRole: null,
